@@ -78,12 +78,12 @@ Place them into a directory called experiments.
   - [R] voronoi-explorer.
 
 
-# v00.00.03 - move controls
-1. [ ] Add an dropdown to switch between Euclidean and Spherical renderings.
-  - [ ] Right dragging will rotate the Sphere.
-  - [ ] Add a Euclidean Left-Right, Up-Down, Full Wraparound options
-2. [ ] Update
-  - [ ] game-of-life-explorer.
-  - [ ] lindenmeyer-explorer.
-  - [ ] mandelbrot-explorer.
-  - [ ] voronoi-explorer.
+# v00.00.03 - Advanced Rendering Features
+1. [I] Add an dropdown to switch between Euclidean and Spherical renderings. **COMPLETED**: 20241219-151500
+  - [I] Right dragging will rotate the Sphere. **COMPLETED**: 20241219-151500
+  - [I] Add a Euclidean Left-Right, Up-Down, Full Wraparound options **COMPLETED**: 20241219-151500
+2. [I] Update **COMPLETED**: 20241219-151500
+  - [I] game-of-life-explorer. **COMPLETED**: 20241219-151500
+  - [I] lindenmeyer-explorer. **COMPLETED**: 20241219-151500
+  - [I] mandelbrot-explorer. **COMPLETED**: 20241219-151500
+  - [I] voronoi-explorer. **COMPLETED**: 20241219-151500
