@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Math Worlds Theater Launchpad</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: radial-gradient(circle at top left, #0d1b2a, #1b263b 40%, #415a77 100%);
+        color: #f1f5f9;
+        min-height: 100vh;
+      }
+
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header,
+      footer {
+        padding: 2rem clamp(1rem, 5vw, 4rem);
+        text-align: center;
+        background: rgba(10, 20, 35, 0.75);
+        backdrop-filter: blur(12px);
+      }
+
+      header h1 {
+        margin: 0 0 0.5rem;
+        font-size: clamp(2rem, 4vw, 3rem);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+
+      header p {
+        max-width: 48rem;
+        margin: 0 auto;
+        line-height: 1.6;
+        color: #e0e6ed;
+      }
+
+      main {
+        padding: clamp(1.5rem, 4vw, 4rem);
+        flex: 1;
+      }
+
+      section {
+        margin-bottom: clamp(2.5rem, 6vw, 4rem);
+      }
+
+      section h2 {
+        margin: 0 0 1rem;
+        font-size: clamp(1.5rem, 3vw, 2.25rem);
+        color: #f8fafc;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      section > p {
+        margin: 0 0 1.5rem;
+        color: #cbd5f5;
+        max-width: 50rem;
+        line-height: 1.6;
+      }
+
+      .card-grid {
+        display: grid;
+        gap: clamp(1rem, 3vw, 2rem);
+        grid-template-columns: repeat(auto-fit, minmax(15.5rem, 1fr));
+      }
+
+      .card {
+        background: rgba(20, 30, 45, 0.8);
+        border-radius: 1rem;
+        padding: clamp(1rem, 2.5vw, 1.75rem);
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+      }
+
+      .card h3 {
+        margin: 0 0 0.75rem;
+        font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+        color: #f8fafc;
+      }
+
+      .card p {
+        flex: 1;
+        margin: 0 0 1.25rem;
+        color: #dbe7ff;
+        line-height: 1.6;
+      }
+
+      .card a {
+        align-self: flex-start;
+        background: linear-gradient(135deg, #38bdf8, #818cf8);
+        color: #0f172a;
+        font-weight: 600;
+        text-decoration: none;
+        padding: 0.65rem 1.25rem;
+        border-radius: 999px;
+        transition: transform 160ms ease, box-shadow 160ms ease;
+        box-shadow: 0 0.75rem 1.5rem rgba(56, 189, 248, 0.35);
+      }
+
+      .card a:hover,
+      .card a:focus {
+        transform: translateY(-2px);
+        box-shadow: 0 1.2rem 2.4rem rgba(129, 140, 248, 0.45);
+      }
+
+      footer p {
+        margin: 0;
+        color: #cbd5f5;
+        line-height: 1.6;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition-duration: 0ms !important;
+          animation-duration: 0ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Math Worlds Theater Launchpad</h1>
+      <p>
+        Explore interactive visualizations crafted by multiple generative model
+        collaborators. Launch an experience to experiment with cellular
+        automata, fractals, tessellations, and more—all rendered directly in
+        the browser.
+      </p>
+    </header>
+    <main>
+      <section aria-labelledby="auto-models">
+        <h2 id="auto-models">Auto Model Explorers</h2>
+        <p>
+          Early explorations generated automatically. Each experiment ships as a
+          standalone HTML file with no build step required.
+        </p>
+        <div class="card-grid">
+          <article class="card">
+            <h3>Voronoi Diagram Explorer</h3>
+            <p>
+              Manipulate seed points to watch Voronoi regions respond in real
+              time with animated transitions and flexible color palettes.
+            </p>
+            <a href="auto/experiments/voronoi-explorer.html">Launch</a>
+          </article>
+          <article class="card">
+            <h3>Game of Life Explorer</h3>
+            <p>
+              Toggle cells, seed classic patterns, and control simulation speed
+              for Conway's iconic cellular automaton.
+            </p>
+            <a href="auto/experiments/game-of-life-explorer.html">Launch</a>
+          </article>
+          <article class="card">
+            <h3>Lindenmayer System Explorer</h3>
+            <p>
+              Reconfigure L-system rules, angles, and iterations to grow custom
+              fractals with instant canvas rendering.
+            </p>
+            <a href="auto/experiments/lindenmeyer-explorer.html">Launch</a>
+          </article>
+          <article class="card">
+            <h3>Mandelbrot Set Explorer</h3>
+            <p>
+              Zoom and pan across the Mandelbrot set while tuning iteration
+              depth and palette selection.
+            </p>
+            <a href="auto/experiments/mandelbrot-explorer.html">Launch</a>
+          </article>
+        </div>
+      </section>
+
+      <section aria-labelledby="gpt5codex-models">
+        <h2 id="gpt5codex-models">GPT-5 Codex Explorers</h2>
+        <p>
+          Refined experiences sharing a common UI toolkit. Each app lives within
+          its own directory for assets and shared resources.
+        </p>
+        <div class="card-grid">
+          <article class="card">
+            <h3>Voronoi Diagram Explorer</h3>
+            <p>
+              Drag generator points to reshape tessellations and experiment with
+              alternate styling presets.
+            </p>
+            <a href="gpt5codex/apps/voronoi/index.html">Launch</a>
+          </article>
+          <article class="card">
+            <h3>Game of Life Explorer</h3>
+            <p>
+              Step through generations, tweak tick rate, and load curated
+              pattern presets using the shared control panel.
+            </p>
+            <a href="gpt5codex/apps/game-of-life/index.html">Launch</a>
+          </article>
+          <article class="card">
+            <h3>Lindenmayer System Explorer</h3>
+            <p>
+              Author custom grammars or load presets to render lush turtle
+              graphics with adjustable geometry.
+            </p>
+            <a href="gpt5codex/apps/lindenmeyer/index.html">Launch</a>
+          </article>
+          <article class="card">
+            <h3>Mandelbrot Set Explorer</h3>
+            <p>
+              Inspect the fractal frontier with smooth zooming, iteration
+              controls, and responsive viewport sizing.
+            </p>
+            <a href="gpt5codex/apps/mandelbrot/index.html">Launch</a>
+          </article>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <p>
+        Looking to extend the collection? Add a new explorer under the
+        appropriate model directory and surface it here so collaborators can
+        discover it quickly.
+      </p>
+    </footer>
+  </body>
+</html>
+
