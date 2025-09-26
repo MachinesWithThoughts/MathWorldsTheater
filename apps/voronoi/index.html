@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voronoi Diagram Explorer</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg-gradient-start: #0f172a;
+        --bg-gradient-end: #020617;
+        --panel-bg: rgba(15, 23, 42, 0.82);
+        --panel-border: rgba(148, 163, 184, 0.1);
+        --text-primary: #e2e8f0;
+        --text-muted: #94a3b8;
+        --accent: #38bdf8;
+        --accent-strong: #0ea5e9;
+        --control-bg: rgba(30, 41, 59, 0.8);
+        --control-border: rgba(148, 163, 184, 0.2);
+        --control-hover: rgba(148, 163, 184, 0.25);
+        --shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.35);
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+        color: var(--text-primary);
+      }
+
+      #app {
+        display: grid;
+        grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .controls-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 24px;
+        background: var(--panel-bg);
+        border-right: 1px solid var(--panel-border);
+        backdrop-filter: blur(18px);
+        overflow-y: auto;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .controls-panel h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+      }
+
+      .controls-panel p.description {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+
+      .controls-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .controls-section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        background: var(--control-bg);
+        border: 1px solid var(--control-border);
+        border-radius: 12px;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .controls-section h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .controls-section p.note {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      button.control-button {
+        appearance: none;
+        border: 1px solid var(--control-border);
+        background: rgba(3, 7, 18, 0.4);
+        color: var(--text-primary);
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+      }
+
+      button.control-button:hover {
+        transform: translateY(-1px);
+        border-color: var(--accent);
+        background: rgba(56, 189, 248, 0.1);
+      }
+
+      button.control-button:active {
+        transform: translateY(0);
+        background: rgba(14, 165, 233, 0.22);
+      }
+
+      label.slider {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 13px;
+      }
+
+      label.slider span.value {
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      input[type="range"] {
+        appearance: none;
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.25);
+        overflow: hidden;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.35);
+        cursor: pointer;
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--accent);
+        border: none;
+        cursor: pointer;
+      }
+
+      .canvas-stage {
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle at top left, #1e293b 0%, #020617 80%);
+      }
+
+      .stage-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+
+      canvas.render-surface {
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      (function () {
+        function setupApp({ title, description }) {
+          const root = document.getElementById("app");
+          const controlsPanel = document.createElement("aside");
+          controlsPanel.className = "controls-panel";
+
+          const heading = document.createElement("h1");
+          heading.textContent = title;
+          controlsPanel.appendChild(heading);
+
+          if (description) {
+            const para = document.createElement("p");
+            para.className = "description";
+            para.textContent = description;
+            controlsPanel.appendChild(para);
+          }
+
+          const controlStack = document.createElement("div");
+          controlStack.className = "controls-grid";
+          controlsPanel.appendChild(controlStack);
+
+          const stage = document.createElement("section");
+          stage.className = "canvas-stage";
+          const stageInner = document.createElement("div");
+          stageInner.className = "stage-inner";
+          stage.appendChild(stageInner);
+
+          root.appendChild(controlsPanel);
+          root.appendChild(stage);
+
+          return { controlsPanel, controlStack, stageInner };
+        }
+
+        function createControlsSection(title, note) {
+          const section = document.createElement("section");
+          section.className = "controls-section";
+          const heading = document.createElement("h2");
+          heading.textContent = title;
+          section.appendChild(heading);
+          if (note) {
+            const para = document.createElement("p");
+            para.className = "note";
+            para.textContent = note;
+            section.appendChild(para);
+          }
+          return section;
+        }
+
+        function createButton(label, onClick) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "control-button";
+          button.textContent = label;
+          button.addEventListener("click", onClick);
+          return button;
+        }
+
+        function createSlider({ label, min = 0, max = 100, step = 1, value = 0, onChange }) {
+          const wrapper = document.createElement("label");
+          wrapper.className = "slider";
+          const title = document.createElement("span");
+          title.textContent = label;
+          const slider = document.createElement("input");
+          slider.type = "range";
+          slider.min = String(min);
+          slider.max = String(max);
+          slider.step = String(step);
+          slider.value = String(value);
+          const valueLabel = document.createElement("span");
+          valueLabel.className = "value";
+          valueLabel.textContent = String(value);
+          slider.addEventListener("input", (event) => {
+            const newValue = Number(event.target.value);
+            valueLabel.textContent = String(newValue);
+            if (onChange) onChange(newValue);
+          });
+          wrapper.appendChild(title);
+          wrapper.appendChild(slider);
+          wrapper.appendChild(valueLabel);
+          return { wrapper, slider, valueLabel };
+        }
+
+        function observeElementSize(element, callback) {
+          const notify = ({ width, height }) => {
+            if (width === 0 || height === 0) return;
+            callback({ width, height });
+          };
+
+          if (typeof ResizeObserver !== "undefined") {
+            const observer = new ResizeObserver((entries) => {
+              entries.forEach((entry) => {
+                const { width, height } = entry.contentRect;
+                notify({ width, height });
+              });
+            });
+            observer.observe(element);
+          } else {
+            window.addEventListener("resize", () => {
+              const rect = element.getBoundingClientRect();
+              notify({ width: rect.width, height: rect.height });
+            });
+          }
+
+          requestAnimationFrame(() => {
+            const rect = element.getBoundingClientRect();
+            notify({ width: rect.width, height: rect.height });
+          });
+        }
+
+        const state = {
+          siteCount: 16,
+          sites: [],
+          draggingIndex: null,
+          hoverIndex: null,
+          initialized: false,
+        };
+
+        const { controlStack, stageInner } = setupApp({
+          title: "Voronoi Diagram Explorer",
+          description: "Drag the sites to see the Voronoi tessellation update in real-time.",
+        });
+
+        const canvas = document.createElement("canvas");
+        canvas.className = "render-surface";
+        stageInner.appendChild(canvas);
+        const ctx = canvas.getContext("2d");
+
+        function randomSites(count) {
+          const { width, height } = canvas;
+          const points = [];
+          for (let i = 0; i < count; i += 1) {
+            points.push({
+              x: Math.random() * width,
+              y: Math.random() * height,
+            });
+          }
+          return points;
+        }
+
+        function clamp(value, min, max) {
+          return Math.max(min, Math.min(max, value));
+        }
+
+        function generateVoronoiCells(sites) {
+          const { width, height } = canvas;
+          const polygons = sites.map(() => [
+            { x: 0, y: 0 },
+            { x: width, y: 0 },
+            { x: width, y: height },
+            { x: 0, y: height },
+          ]);
+
+          const clipPolygon = (polygon, a, b) => {
+            const output = [];
+            for (let i = 0; i < polygon.length; i += 1) {
+              const current = polygon[i];
+              const prev = polygon[(i + polygon.length - 1) % polygon.length];
+              const sideCurrent = (b.x - a.x) * (current.y - a.y) - (b.y - a.y) * (current.x - a.x);
+              const sidePrev = (b.x - a.x) * (prev.y - a.y) - (b.y - a.y) * (prev.x - a.x);
+
+              if (sideCurrent <= 0) {
+                if (sidePrev > 0) {
+                  const t = sidePrev / (sidePrev - sideCurrent);
+                  output.push({
+                    x: prev.x + (current.x - prev.x) * t,
+                    y: prev.y + (current.y - prev.y) * t,
+                  });
+                }
+                output.push(current);
+              } else if (sidePrev <= 0) {
+                const t = sidePrev / (sidePrev - sideCurrent);
+                output.push({
+                  x: prev.x + (current.x - prev.x) * t,
+                  y: prev.y + (current.y - prev.y) * t,
+                });
+              }
+            }
+            return output;
+          };
+
+          for (let i = 0; i < sites.length; i += 1) {
+            for (let j = 0; j < sites.length; j += 1) {
+              if (i === j) continue;
+              const siteI = sites[i];
+              const siteJ = sites[j];
+              const midX = (siteI.x + siteJ.x) / 2;
+              const midY = (siteI.y + siteJ.y) / 2;
+              const dx = siteJ.x - siteI.x;
+              const dy = siteJ.y - siteI.y;
+              const midpoint = { x: midX, y: midY };
+              const normal = {
+                x: midpoint.x + dy,
+                y: midpoint.y - dx,
+              };
+              const alt = {
+                x: midpoint.x - dy,
+                y: midpoint.y + dx,
+              };
+              const polygon = clipPolygon(polygons[i], midpoint, normal);
+              if (polygon.length === 0) {
+                polygons[i] = clipPolygon(polygons[i], midpoint, alt);
+              } else {
+                polygons[i] = polygon;
+              }
+            }
+          }
+
+          return polygons;
+        }
+
+        function draw() {
+          const { width, height } = canvas;
+          ctx.clearRect(0, 0, width, height);
+          if (!state.sites.length) return;
+
+          const cells = generateVoronoiCells(state.sites);
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = "rgba(15, 23, 42, 0.9)";
+
+          for (let i = 0; i < cells.length; i += 1) {
+            const cell = cells[i];
+            if (cell.length < 3) continue;
+            const hue = Math.floor((i / cells.length) * 360);
+            ctx.fillStyle = `hsla(${hue}, 60%, 55%, 0.5)`;
+            ctx.beginPath();
+            ctx.moveTo(cell[0].x, cell[0].y);
+            for (let j = 1; j < cell.length; j += 1) {
+              ctx.lineTo(cell[j].x, cell[j].y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = "#0ea5e9";
+          for (let i = 0; i < state.sites.length; i += 1) {
+            const site = state.sites[i];
+            ctx.beginPath();
+            ctx.arc(site.x, site.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            if (state.hoverIndex === i) {
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+              ctx.stroke();
+            }
+          }
+        }
+
+        function pickSite(x, y) {
+          for (let i = state.sites.length - 1; i >= 0; i -= 1) {
+            const site = state.sites[i];
+            const dx = site.x - x;
+            const dy = site.y - y;
+            if (dx * dx + dy * dy <= 64) {
+              return i;
+            }
+          }
+          return null;
+        }
+
+        canvas.addEventListener("pointerdown", (event) => {
+          const rect = canvas.getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          const y = event.clientY - rect.top;
+          state.draggingIndex = pickSite(x, y);
+          if (state.draggingIndex !== null) {
+            canvas.setPointerCapture(event.pointerId);
+          }
+        });
+
+        canvas.addEventListener("pointermove", (event) => {
+          const rect = canvas.getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          const y = event.clientY - rect.top;
+          if (state.draggingIndex !== null) {
+            const site = state.sites[state.draggingIndex];
+            site.x = clamp(x, 0, canvas.width);
+            site.y = clamp(y, 0, canvas.height);
+            draw();
+          } else {
+            state.hoverIndex = pickSite(x, y);
+            draw();
+          }
+        });
+
+        canvas.addEventListener("pointerup", (event) => {
+          if (state.draggingIndex !== null) {
+            canvas.releasePointerCapture(event.pointerId);
+            state.draggingIndex = null;
+          }
+        });
+
+        canvas.addEventListener("pointerleave", () => {
+          state.draggingIndex = null;
+          state.hoverIndex = null;
+          draw();
+        });
+
+        function resizeCanvas(width, height) {
+          const w = Math.max(1, Math.floor(width));
+          const h = Math.max(1, Math.floor(height));
+          if (canvas.width !== w || canvas.height !== h) {
+            canvas.width = w;
+            canvas.height = h;
+          }
+        }
+
+        function resetSites(count) {
+          state.sites = randomSites(count);
+          draw();
+        }
+
+        const configuration = createControlsSection(
+          "Configuration",
+          "Adjust site count and regenerate the diagram.",
+        );
+        const slider = createSlider({
+          label: "Number of Sites",
+          min: 3,
+          max: 64,
+          step: 1,
+          value: state.siteCount,
+          onChange: (value) => {
+            state.siteCount = value;
+            resetSites(state.siteCount);
+          },
+        });
+        configuration.appendChild(slider.wrapper);
+        configuration.appendChild(
+          createButton("Regenerate", () => {
+            resetSites(state.siteCount);
+          }),
+        );
+        controlStack.appendChild(configuration);
+
+        const interaction = createControlsSection(
+          "Interaction",
+          "Drag site nodes to update the tessellation.",
+        );
+        const buttonRow = document.createElement("div");
+        buttonRow.className = "button-row";
+        buttonRow.appendChild(
+          createButton("Scatter New Sites", () => {
+            resetSites(state.siteCount);
+          }),
+        );
+        interaction.appendChild(buttonRow);
+        controlStack.appendChild(interaction);
+
+        function handleResize(dimensions) {
+          const width = dimensions.width || stageInner.clientWidth || window.innerWidth - 320;
+          const height = dimensions.height || stageInner.clientHeight || window.innerHeight;
+          if (!width || !height) {
+            return;
+          }
+
+          resizeCanvas(width, height);
+
+          if (!state.initialized) {
+            state.initialized = true;
+            resetSites(state.siteCount);
+          } else {
+            draw();
+          }
+        }
+
+        observeElementSize(stageInner, handleResize);
+
+        requestAnimationFrame(() => {
+          handleResize(stageInner.getBoundingClientRect());
+        });
+      })();
+    </script>
+  </body>
+</html>
+

@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Game of Life Explorer</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg-gradient-start: #0f172a;
+        --bg-gradient-end: #020617;
+        --panel-bg: rgba(15, 23, 42, 0.82);
+        --panel-border: rgba(148, 163, 184, 0.1);
+        --text-primary: #e2e8f0;
+        --text-muted: #94a3b8;
+        --accent: #38bdf8;
+        --accent-strong: #0ea5e9;
+        --control-bg: rgba(30, 41, 59, 0.8);
+        --control-border: rgba(148, 163, 184, 0.2);
+        --control-hover: rgba(148, 163, 184, 0.25);
+        --shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.35);
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+        color: var(--text-primary);
+      }
+
+      #app {
+        display: grid;
+        grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .controls-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 24px;
+        background: var(--panel-bg);
+        border-right: 1px solid var(--panel-border);
+        backdrop-filter: blur(18px);
+        overflow-y: auto;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .controls-panel h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 600;
+      }
+
+      .controls-panel p.description {
+        margin: 0;
+        font-size: 14px;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+
+      .controls-grid {
+        display: grid;
+        gap: 12px;
+      }
+
+      .controls-section {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        background: var(--control-bg);
+        border: 1px solid var(--control-border);
+        border-radius: 12px;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .controls-section h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .controls-section p.note {
+        margin: 0;
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      button.control-button {
+        appearance: none;
+        border: 1px solid var(--control-border);
+        background: rgba(3, 7, 18, 0.4);
+        color: var(--text-primary);
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+      }
+
+      button.control-button:hover {
+        transform: translateY(-1px);
+        border-color: var(--accent);
+        background: rgba(56, 189, 248, 0.1);
+      }
+
+      button.control-button:active {
+        transform: translateY(0);
+        background: rgba(14, 165, 233, 0.22);
+      }
+
+      label.slider {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 13px;
+      }
+
+      label.slider span.value {
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      input[type="range"] {
+        appearance: none;
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.25);
+        overflow: hidden;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.35);
+        cursor: pointer;
+      }
+
+      input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--accent);
+        border: none;
+        cursor: pointer;
+      }
+
+      .canvas-stage {
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle at top left, #1e293b 0%, #020617 80%);
+      }
+
+      .stage-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+
+      canvas.render-surface {
+        display: block;
+        width: 100%;
+        height: 100%;
+        background: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      (function () {
+        function setupApp({ title, description }) {
+          const root = document.getElementById("app");
+          const controlsPanel = document.createElement("aside");
+          controlsPanel.className = "controls-panel";
+
+          const heading = document.createElement("h1");
+          heading.textContent = title;
+          controlsPanel.appendChild(heading);
+
+          if (description) {
+            const para = document.createElement("p");
+            para.className = "description";
+            para.textContent = description;
+            controlsPanel.appendChild(para);
+          }
+
+          const controlStack = document.createElement("div");
+          controlStack.className = "controls-grid";
+          controlsPanel.appendChild(controlStack);
+
+          const stage = document.createElement("section");
+          stage.className = "canvas-stage";
+          const stageInner = document.createElement("div");
+          stageInner.className = "stage-inner";
+          stage.appendChild(stageInner);
+
+          root.appendChild(controlsPanel);
+          root.appendChild(stage);
+
+          return { controlStack, stageInner };
+        }
+
+        function createControlsSection(title, note) {
+          const section = document.createElement("section");
+          section.className = "controls-section";
+          const heading = document.createElement("h2");
+          heading.textContent = title;
+          section.appendChild(heading);
+          if (note) {
+            const para = document.createElement("p");
+            para.className = "note";
+            para.textContent = note;
+            section.appendChild(para);
+          }
+          return section;
+        }
+
+        function createButton(label, onClick) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "control-button";
+          button.textContent = label;
+          button.addEventListener("click", onClick);
+          return button;
+        }
+
+        function createSlider({ label, min = 0, max = 100, step = 1, value = 0, onChange }) {
+          const wrapper = document.createElement("label");
+          wrapper.className = "slider";
+          const title = document.createElement("span");
+          title.textContent = label;
+          const slider = document.createElement("input");
+          slider.type = "range";
+          slider.min = String(min);
+          slider.max = String(max);
+          slider.step = String(step);
+          slider.value = String(value);
+          const valueLabel = document.createElement("span");
+          valueLabel.className = "value";
+          valueLabel.textContent = String(value);
+          slider.addEventListener("input", (event) => {
+            const newValue = Number(event.target.value);
+            valueLabel.textContent = String(newValue);
+            if (onChange) onChange(newValue);
+          });
+          wrapper.appendChild(title);
+          wrapper.appendChild(slider);
+          wrapper.appendChild(valueLabel);
+          return { wrapper, slider, valueLabel };
+        }
+
+        function observeElementSize(element, callback) {
+          const notify = ({ width, height }) => {
+            if (width === 0 || height === 0) return;
+            callback({ width, height });
+          };
+
+          if (typeof ResizeObserver !== "undefined") {
+            const observer = new ResizeObserver((entries) => {
+              entries.forEach((entry) => {
+                const { width, height } = entry.contentRect;
+                notify({ width, height });
+              });
+            });
+            observer.observe(element);
+          } else {
+            window.addEventListener("resize", () => {
+              const rect = element.getBoundingClientRect();
+              notify({ width: rect.width, height: rect.height });
+            });
+          }
+
+          requestAnimationFrame(() => {
+            const rect = element.getBoundingClientRect();
+            notify({ width: rect.width, height: rect.height });
+          });
+        }
+
+        const config = {
+          columns: 64,
+          rows: 48,
+          cellSize: 12,
+          running: false,
+          speed: 6,
+        };
+
+        const state = {
+          grid: new Set(),
+          generation: 0,
+          animationFrame: null,
+        };
+
+        const { controlStack, stageInner } = setupApp({
+          title: "Game of Life Explorer",
+          description: "Experiment with Conway's Game of Life. Tap cells to toggle, then run the simulation.",
+        });
+
+        const canvas = document.createElement("canvas");
+        canvas.className = "render-surface";
+        stageInner.appendChild(canvas);
+        const ctx = canvas.getContext("2d");
+
+        function keyFor(x, y) {
+          return `${x},${y}`;
+        }
+
+        function drawGrid() {
+          ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.08)";
+          ctx.lineWidth = 1;
+
+          for (let x = 0; x <= config.columns; x += 1) {
+            ctx.beginPath();
+            ctx.moveTo(x * config.cellSize + 0.5, 0);
+            ctx.lineTo(x * config.cellSize + 0.5, canvas.height);
+            ctx.stroke();
+          }
+
+          for (let y = 0; y <= config.rows; y += 1) {
+            ctx.beginPath();
+            ctx.moveTo(0, y * config.cellSize + 0.5);
+            ctx.lineTo(canvas.width, y * config.cellSize + 0.5);
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = "#38bdf8";
+          state.grid.forEach((key) => {
+            const [x, y] = key.split(",").map(Number);
+            ctx.fillRect(
+              x * config.cellSize + 1,
+              y * config.cellSize + 1,
+              config.cellSize - 2,
+              config.cellSize - 2,
+            );
+          });
+
+          ctx.fillStyle = "rgba(148, 163, 184, 0.6)";
+          ctx.font = "14px 'JetBrains Mono', monospace";
+          ctx.fillText(`Generation ${state.generation}`, 12, canvas.height - 12);
+        }
+
+        function neighbors(x, y) {
+          let count = 0;
+          for (let dx = -1; dx <= 1; dx += 1) {
+            for (let dy = -1; dy <= 1; dy += 1) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = x + dx;
+              const ny = y + dy;
+              if (nx >= 0 && nx < config.columns && ny >= 0 && ny < config.rows) {
+                if (state.grid.has(keyFor(nx, ny))) {
+                  count += 1;
+                }
+              }
+            }
+          }
+          return count;
+        }
+
+        function step() {
+          const next = new Set();
+          for (let x = 0; x < config.columns; x += 1) {
+            for (let y = 0; y < config.rows; y += 1) {
+              const alive = state.grid.has(keyFor(x, y));
+              const count = neighbors(x, y);
+              if (alive && (count === 2 || count === 3)) {
+                next.add(keyFor(x, y));
+              } else if (!alive && count === 3) {
+                next.add(keyFor(x, y));
+              }
+            }
+          }
+          state.grid = next;
+          state.generation += 1;
+          drawGrid();
+        }
+
+        function run() {
+          if (!config.running) return;
+          step();
+          const delay = 1200 / config.speed;
+          state.animationFrame = setTimeout(() => {
+            requestAnimationFrame(run);
+          }, delay);
+        }
+
+        function toggleRunning() {
+          config.running = !config.running;
+          if (config.running) {
+            run();
+            playPauseButton.textContent = "Pause";
+          } else {
+            if (state.animationFrame) {
+              clearTimeout(state.animationFrame);
+              state.animationFrame = null;
+            }
+            playPauseButton.textContent = "Play";
+          }
+        }
+
+        function clearGrid() {
+          config.running = false;
+          if (state.animationFrame) {
+            clearTimeout(state.animationFrame);
+            state.animationFrame = null;
+          }
+          state.grid.clear();
+          state.generation = 0;
+          playPauseButton.textContent = "Play";
+          drawGrid();
+        }
+
+        function seedGlider() {
+          clearGrid();
+          state.grid.add(keyFor(1, 0));
+          state.grid.add(keyFor(2, 1));
+          state.grid.add(keyFor(0, 2));
+          state.grid.add(keyFor(1, 2));
+          state.grid.add(keyFor(2, 2));
+          drawGrid();
+        }
+
+        function seedRandom() {
+          clearGrid();
+          for (let x = 0; x < config.columns; x += 1) {
+            for (let y = 0; y < config.rows; y += 1) {
+              if (Math.random() < 0.2) {
+                state.grid.add(keyFor(x, y));
+              }
+            }
+          }
+          drawGrid();
+        }
+
+        canvas.addEventListener("click", (event) => {
+          const rect = canvas.getBoundingClientRect();
+          const x = Math.floor((event.clientX - rect.left) / config.cellSize);
+          const y = Math.floor((event.clientY - rect.top) / config.cellSize);
+          const key = keyFor(x, y);
+          if (state.grid.has(key)) {
+            state.grid.delete(key);
+          } else {
+            state.grid.add(key);
+          }
+          drawGrid();
+        });
+
+        const simulationControls = createControlsSection(
+          "Simulation",
+          "Play, pause, or step through generations.",
+        );
+        const buttonRow = document.createElement("div");
+        buttonRow.className = "button-row";
+        const playPauseButton = createButton("Play", toggleRunning);
+        const stepButton = createButton("Step", () => {
+          if (!config.running) {
+            step();
+          }
+        });
+        const clearButton = createButton("Clear", clearGrid);
+        buttonRow.appendChild(playPauseButton);
+        buttonRow.appendChild(stepButton);
+        buttonRow.appendChild(clearButton);
+        simulationControls.appendChild(buttonRow);
+
+        const speedSlider = createSlider({
+          label: "Speed",
+          min: 1,
+          max: 12,
+          value: config.speed,
+          onChange: (value) => {
+            config.speed = Number(value);
+          },
+        });
+        simulationControls.appendChild(speedSlider.wrapper);
+        controlStack.appendChild(simulationControls);
+
+        const seedsSection = createControlsSection("Seeds", "Start from classic or random patterns.");
+        const seedButtons = document.createElement("div");
+        seedButtons.className = "button-row";
+        seedButtons.appendChild(createButton("Glider", seedGlider));
+        seedButtons.appendChild(createButton("Random", seedRandom));
+        seedsSection.appendChild(seedButtons);
+        controlStack.appendChild(seedsSection);
+
+        observeElementSize(stageInner, ({ width, height }) => {
+          const ratio = window.devicePixelRatio || 1;
+          canvas.width = Math.floor(width * ratio);
+          canvas.height = Math.floor(height * ratio);
+          canvas.style.width = `${width}px`;
+          canvas.style.height = `${height}px`;
+          ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+          drawGrid();
+        });
+
+        drawGrid();
+      })();
+    </script>
+  </body>
+</html>
+

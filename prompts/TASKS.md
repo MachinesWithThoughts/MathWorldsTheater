@@ -12,14 +12,14 @@ Beyond flat Euclidean space, the app will also support alternative geometries, s
 
 Generate a series of experimental standalone one-pager apps:
 
-1. [ ] A Voronoi Diagram Explorer
-   - [ ] Draw a black border around the cells.
-   - [ ] All the nodes to be dragged and dropped.
-2. [ ] A Game of Life Explorer
-3. [ ] A Lindenmeyer System Explorer
-   - [ ] Show the L-System in a text box so the user can modify it.
-4. [ ] A Mandelbrot Set Explorer
-   - [ ] Draw the bounding box as the user moves their mouse.
+1. [I] A Voronoi Diagram Explorer (**COMPLETED**: 20250926-120500)
+   - [I] Draw a black border around the cells. (**COMPLETED**: 20250926-120500)
+   - [I] All the nodes to be dragged and dropped. (**COMPLETED**: 20250926-120500)
+2. [I] A Game of Life Explorer (**COMPLETED**: 20250926-120500)
+3. [I] A Lindenmeyer System Explorer (**COMPLETED**: 20250926-120500)
+   - [I] Show the L-System in a text box so the user can modify it. (**COMPLETED**: 20250926-120500)
+4. [I] A Mandelbrot Set Explorer (**COMPLETED**: 20250926-120500)
+   - [I] Draw the bounding box as the user moves their mouse. (**COMPLETED**: 20250926-120500)
 
 
 # v00.00.02 - move controls
@@ -41,3 +41,12 @@ Generate a series of experimental standalone one-pager apps:
   - [ ] lindenmeyer-explorer.
   - [ ] mandelbrot-explorer.
   - [ ] voronoi-explorer.
+
+## implementation
+
+- Create a shared scaffolding for explorer one-pagers: routing stub, build script, base layout, and reusable control panel styling.
+- Implement Voronoi Diagram Explorer: render Voronoi cells with stroke styling, enable drag-and-drop for sites, and re-render on drag interactions.
+- Implement Game of Life Explorer: interactive grid with play/pause/step controls, pattern seeding, and layout accommodating future control relocation.
+- Implement Lindenmeyer System Explorer: real-time L-system renderer with editable grammar textarea and preview updates on change.
+- Implement Mandelbrot Set Explorer: canvas renderer with zoom/pan and live bounding-box overlay during mouse drag.
+- Document features and usage in `README.md`, execute smoke tests in `tests/`, and update task statuses with completion timestamps.
