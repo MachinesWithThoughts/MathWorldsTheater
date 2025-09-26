@@ -44,17 +44,15 @@
         
         .controls {
             display: flex;
-            justify-content: center;
-            gap: 20px;
+            flex-direction: column;
+            gap: 15px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
         }
         
         .control-group {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 5px;
+            gap: 8px;
         }
         
         label {
@@ -130,9 +128,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>🌿 Lindenmeyer System Explorer</h1>
-        
-        <div class="controls">
+        <div class="controls-panel">
+            <h2>🌿 Lindenmeyer System</h2>
+            
+            <div class="controls">
             <div class="control-group">
                 <label for="iterations">Iterations:</label>
                 <input type="range" id="iterations" min="0" max="8" value="4">
@@ -152,6 +151,14 @@
             </div>
             
             <div class="control-group">
+                <label for="renderingMode">Rendering:</label>
+                <select id="renderingMode">
+                    <option value="euclidean">Euclidean</option>
+                    <option value="spherical">Spherical</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
                 <label for="preset">Preset:</label>
                 <select id="preset">
                     <option value="dragon">Dragon Curve</option>
@@ -165,30 +172,33 @@
             <button onclick="generateLSystem()">🌱 Generate</button>
             <button id="animateBtn" onclick="toggleAnimation()">▶️ Animate</button>
             <button onclick="clearCanvas()">🗑️ Clear</button>
-        </div>
-        
-        <div class="l-system-editor" style="margin: 20px auto; max-width: 800px;">
-            <label for="lSystemText" style="display: block; margin-bottom: 10px; font-weight: bold;">L-System Definition:</label>
-            <textarea id="lSystemText" rows="4" style="width: 100%; padding: 10px; border: none; border-radius: 5px; background: rgba(255,255,255,0.9); color: #333; font-family: monospace; font-size: 14px;" placeholder="Enter L-System rules here..."></textarea>
-            <div style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
-                <strong>Format:</strong> axiom: F, rules: F→F+F-F-F+F, G→GG (one per line)
+            </div>
+            
+            <div class="l-system-editor" style="margin-top: 20px;">
+                <label for="lSystemText" style="display: block; margin-bottom: 10px; font-weight: bold;">L-System Definition:</label>
+                <textarea id="lSystemText" rows="4" style="width: 100%; padding: 10px; border: none; border-radius: 5px; background: rgba(255,255,255,0.9); color: #333; font-family: monospace; font-size: 14px;" placeholder="Enter L-System rules here..."></textarea>
+                <div style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
+                    <strong>Format:</strong> axiom: F, rules: F→F+F-F-F+F, G→GG (one per line)
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat">Iteration: <span id="currentIteration">0</span></div>
+                <div class="stat">Commands: <span id="commandCount">0</span></div>
+                <div class="stat">Status: <span id="status">Ready</span></div>
+            </div>
+            
+            <div class="preset-info" id="presetInfo">
+                <strong>Dragon Curve:</strong> A fractal curve that resembles a dragon. Uses F, +, - commands with angle 90°.
+            </div>
+            
+            <div class="info">
+                <p>Adjust parameters to explore different fractal patterns • Use presets to see classic L-systems</p>
             </div>
         </div>
         
-        <canvas id="canvas" width="800" height="600"></canvas>
-        
-        <div class="stats">
-            <div class="stat">Iteration: <span id="currentIteration">0</span></div>
-            <div class="stat">Commands: <span id="commandCount">0</span></div>
-            <div class="stat">Status: <span id="status">Ready</span></div>
-        </div>
-        
-        <div class="preset-info" id="presetInfo">
-            <strong>Dragon Curve:</strong> A fractal curve that resembles a dragon. Uses F, +, - commands with angle 90°.
-        </div>
-        
-        <div class="info">
-            <p>Adjust parameters to explore different fractal patterns • Use presets to see classic L-systems</p>
+        <div class="canvas-container">
+            <canvas id="canvas" width="800" height="600"></canvas>
         </div>
     </div>
 
@@ -258,6 +268,8 @@
                 updateLSystemText(preset);
             }
         });
+        
+        document.getElementById('renderingMode').addEventListener('change', generateLSystem);
         
         document.getElementById('lSystemText').addEventListener('input', function() {
             if (document.getElementById('preset').value === 'custom') {

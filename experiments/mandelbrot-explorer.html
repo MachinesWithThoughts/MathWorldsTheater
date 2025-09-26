@@ -15,8 +15,25 @@
         }
         
         .container {
-            max-width: 1200px;
+            display: flex;
+            max-width: 1400px;
             margin: 0 auto;
+            gap: 20px;
+        }
+        
+        .controls-panel {
+            width: 300px;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            height: fit-content;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
         h1 {
@@ -27,17 +44,15 @@
         
         .controls {
             display: flex;
-            justify-content: center;
-            gap: 20px;
+            flex-direction: column;
+            gap: 15px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
         }
         
         .control-group {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 5px;
+            gap: 8px;
         }
         
         label {
@@ -119,54 +134,66 @@
 </head>
 <body>
     <div class="container">
-        <h1>🌀 Mandelbrot Set Explorer</h1>
-        
-        <div class="controls">
-            <div class="control-group">
-                <label for="maxIterations">Max Iterations:</label>
-                <input type="range" id="maxIterations" min="50" max="1000" value="200">
-                <span id="maxIterationsValue">200</span>
+        <div class="controls-panel">
+            <h2>🌀 Mandelbrot Set</h2>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="maxIterations">Max Iterations:</label>
+                    <input type="range" id="maxIterations" min="50" max="1000" value="200">
+                    <span id="maxIterationsValue">200</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="colorScheme">Color Scheme:</label>
+                    <select id="colorScheme">
+                        <option value="rainbow">Rainbow</option>
+                        <option value="fire">Fire</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="grayscale">Grayscale</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="renderingMode">Rendering:</label>
+                    <select id="renderingMode">
+                        <option value="euclidean">Euclidean</option>
+                        <option value="spherical">Spherical</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="zoom">Zoom:</label>
+                    <input type="range" id="zoom" min="1" max="100" value="1">
+                    <span id="zoomValue">1x</span>
+                </div>
+                
+                <button onclick="generateMandelbrot()">🌀 Generate</button>
+                <button onclick="resetView()">🏠 Reset View</button>
+                <button onclick="saveImage()">💾 Save Image</button>
             </div>
             
-            <div class="control-group">
-                <label for="colorScheme">Color Scheme:</label>
-                <select id="colorScheme">
-                    <option value="rainbow">Rainbow</option>
-                    <option value="fire">Fire</option>
-                    <option value="ocean">Ocean</option>
-                    <option value="grayscale">Grayscale</option>
-                </select>
+            <div class="stats">
+                <div class="stat">Iterations: <span id="currentIterations">200</span></div>
+                <div class="stat">Zoom: <span id="currentZoom">1x</span></div>
+                <div class="stat">Status: <span id="status">Ready</span></div>
             </div>
             
-            <div class="control-group">
-                <label for="zoom">Zoom:</label>
-                <input type="range" id="zoom" min="1" max="100" value="1">
-                <span id="zoomValue">1x</span>
+            <div class="coordinates" id="coordinates">
+                Click and drag to zoom into the Mandelbrot set
             </div>
             
-            <button onclick="generateMandelbrot()">🌀 Generate</button>
-            <button onclick="resetView()">🏠 Reset View</button>
-            <button onclick="saveImage()">💾 Save Image</button>
+            <div class="info">
+                <p>Click and drag to zoom • Use controls to adjust parameters • Explore the infinite complexity!</p>
+            </div>
         </div>
         
-        <canvas id="canvas" width="600" height="600"></canvas>
-        
-        <div class="loading" id="loading" style="display: none;">
-            🔄 Computing Mandelbrot Set...
-        </div>
-        
-        <div class="stats">
-            <div class="stat">Iterations: <span id="currentIterations">200</span></div>
-            <div class="stat">Zoom: <span id="currentZoom">1x</span></div>
-            <div class="stat">Status: <span id="status">Ready</span></div>
-        </div>
-        
-        <div class="coordinates" id="coordinates">
-            Click and drag to zoom into the Mandelbrot set
-        </div>
-        
-        <div class="info">
-            <p>Click and drag to zoom • Use controls to adjust parameters • Explore the infinite complexity!</p>
+        <div class="canvas-container">
+            <canvas id="canvas" width="600" height="600"></canvas>
+            
+            <div class="loading" id="loading" style="display: none;">
+                🔄 Computing Mandelbrot Set...
+            </div>
         </div>
     </div>
 
@@ -195,6 +222,7 @@
         });
         
         document.getElementById('colorScheme').addEventListener('change', generateMandelbrot);
+        document.getElementById('renderingMode').addEventListener('change', generateMandelbrot);
         
         // Mouse events for zooming
         canvas.addEventListener('mousedown', function(e) {
