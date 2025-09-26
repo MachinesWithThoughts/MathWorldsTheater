@@ -15,8 +15,25 @@
         }
         
         .container {
-            max-width: 1200px;
+            display: flex;
+            max-width: 1400px;
             margin: 0 auto;
+            gap: 20px;
+        }
+        
+        .controls-panel {
+            width: 300px;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            height: fit-content;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
         h1 {
@@ -27,17 +44,15 @@
         
         .controls {
             display: flex;
-            justify-content: center;
-            gap: 20px;
+            flex-direction: column;
+            gap: 15px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
         }
         
         .control-group {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 5px;
+            gap: 8px;
         }
         
         label {
@@ -83,38 +98,50 @@
 </head>
 <body>
     <div class="container">
-        <h1>🎨 Voronoi Diagram Explorer</h1>
-        
-        <div class="controls">
-            <div class="control-group">
-                <label for="pointCount">Points:</label>
-                <input type="range" id="pointCount" min="3" max="50" value="15">
-                <span id="pointCountValue">15</span>
+        <div class="controls-panel">
+            <h2>🎨 Voronoi Explorer</h2>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="pointCount">Points:</label>
+                    <input type="range" id="pointCount" min="3" max="50" value="15">
+                    <span id="pointCountValue">15</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="colorMode">Color Mode:</label>
+                    <select id="colorMode">
+                        <option value="rainbow">Rainbow</option>
+                        <option value="grayscale">Grayscale</option>
+                        <option value="random">Random</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="renderingMode">Rendering:</label>
+                    <select id="renderingMode">
+                        <option value="euclidean">Euclidean</option>
+                        <option value="spherical">Spherical</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="animationSpeed">Animation:</label>
+                    <input type="range" id="animationSpeed" min="0" max="100" value="0">
+                    <span id="animationSpeedValue">0</span>
+                </div>
+                
+                <button onclick="generateVoronoi()">🎲 Generate New</button>
+                <button onclick="toggleAnimation()">▶️ Toggle Animation</button>
             </div>
             
-            <div class="control-group">
-                <label for="colorMode">Color Mode:</label>
-                <select id="colorMode">
-                    <option value="rainbow">Rainbow</option>
-                    <option value="grayscale">Grayscale</option>
-                    <option value="random">Random</option>
-                </select>
+            <div class="info">
+                <p>Click and drag to add points • Adjust controls to explore different patterns</p>
             </div>
-            
-            <div class="control-group">
-                <label for="animationSpeed">Animation:</label>
-                <input type="range" id="animationSpeed" min="0" max="100" value="0">
-                <span id="animationSpeedValue">0</span>
-            </div>
-            
-            <button onclick="generateVoronoi()">🎲 Generate New</button>
-            <button onclick="toggleAnimation()">▶️ Toggle Animation</button>
         </div>
         
-        <canvas id="canvas" width="800" height="600"></canvas>
-        
-        <div class="info">
-            <p>Click and drag to add points • Adjust controls to explore different patterns</p>
+        <div class="canvas-container">
+            <canvas id="canvas" width="800" height="600"></canvas>
         </div>
     </div>
 
@@ -137,6 +164,7 @@
         });
         
         document.getElementById('colorMode').addEventListener('change', generateVoronoi);
+        document.getElementById('renderingMode').addEventListener('change', generateVoronoi);
         document.getElementById('animationSpeed').addEventListener('input', function() {
             document.getElementById('animationSpeedValue').textContent = this.value;
         });
@@ -231,15 +259,24 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             const colorMode = document.getElementById('colorMode').value;
+            const renderingMode = document.getElementById('renderingMode').value;
             
             // Create Voronoi diagram
             for (let x = 0; x < canvas.width; x += 2) {
                 for (let y = 0; y < canvas.height; y += 2) {
                     let closestPoint = points[0];
-                    let minDist = distance(x, y, points[0].x, points[0].y);
+                    let minDist;
+                    
+                    if (renderingMode === 'spherical') {
+                        minDist = sphericalDistance(x, y, points[0].x, points[0].y);
+                    } else {
+                        minDist = distance(x, y, points[0].x, points[0].y);
+                    }
                     
                     for (let i = 1; i < points.length; i++) {
-                        const dist = distance(x, y, points[i].x, points[i].y);
+                        const dist = renderingMode === 'spherical' ? 
+                            sphericalDistance(x, y, points[i].x, points[i].y) :
+                            distance(x, y, points[i].x, points[i].y);
                         if (dist < minDist) {
                             minDist = dist;
                             closestPoint = points[i];
@@ -336,6 +373,32 @@
         
         function distance(x1, y1, x2, y2) {
             return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+        }
+        
+        function sphericalDistance(x1, y1, x2, y2) {
+            // Convert to spherical coordinates
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(canvas.width, canvas.height) / 2;
+            
+            // Convert to normalized coordinates
+            const nx1 = (x1 - centerX) / radius;
+            const ny1 = (y1 - centerY) / radius;
+            const nx2 = (x2 - centerX) / radius;
+            const ny2 = (y2 - centerY) / radius;
+            
+            // Calculate spherical distance
+            const lat1 = Math.asin(ny1);
+            const lat2 = Math.asin(ny2);
+            const dlat = lat2 - lat1;
+            const dlon = Math.atan2(nx2, Math.sqrt(1 - nx2*nx2)) - Math.atan2(nx1, Math.sqrt(1 - nx1*nx1));
+            
+            const a = Math.sin(dlat/2) * Math.sin(dlat/2) + 
+                     Math.cos(lat1) * Math.cos(lat2) * 
+                     Math.sin(dlon/2) * Math.sin(dlon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            
+            return c;
         }
         
         function toggleAnimation() {

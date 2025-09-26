@@ -8,7 +8,7 @@ Beyond flat Euclidean space, the app will also support alternative geometries, s
 
 - https://chatgpt.com/g/g-p-6895419b687c819195f74e2fe6c95c9c/c/68d5c619-4f50-832e-a42a-af7d4db7ed0b
 
-# v00.01.00
+# v00.00.01 - intial version
 
 Generate a series of experimental standalone one-pager apps:
 
@@ -67,3 +67,23 @@ Place them into a directory called experiments.
   - Visual feedback showing zoom target area
   - Smooth preview with dashed line indicators
   - Clear preview when mouse leaves canvas
+
+# v00.00.02 - move controls
+1. [R] Review the following features:
+  - [R] Move all the controls to the left side of the screen.
+2. [R] Update
+  - [R] game-of-life-explorer.
+  - [R] lindenmeyer-explorer.
+  - [R] mandelbrot-explorer.
+  - [R] voronoi-explorer.
+
+
+# v00.00.03 - move controls
+1. [ ] Add an dropdown to switch between Euclidean and Spherical renderings.
+  - [ ] Right dragging will rotate the Sphere.
+  - [ ] Add a Euclidean Left-Right, Up-Down, Full Wraparound options
+2. [ ] Update
+  - [ ] game-of-life-explorer.
+  - [ ] lindenmeyer-explorer.
+  - [ ] mandelbrot-explorer.
+  - [ ] voronoi-explorer.

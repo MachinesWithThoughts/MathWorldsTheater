@@ -15,8 +15,25 @@
         }
         
         .container {
-            max-width: 1200px;
+            display: flex;
+            max-width: 1400px;
             margin: 0 auto;
+            gap: 20px;
+        }
+        
+        .controls-panel {
+            width: 300px;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            height: fit-content;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         
         h1 {
@@ -27,17 +44,15 @@
         
         .controls {
             display: flex;
-            justify-content: center;
-            gap: 20px;
+            flex-direction: column;
+            gap: 15px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
         }
         
         .control-group {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 5px;
+            gap: 8px;
         }
         
         label {
@@ -106,48 +121,60 @@
 </head>
 <body>
     <div class="container">
-        <h1>🧬 Conway's Game of Life Explorer</h1>
-        
-        <div class="controls">
-            <div class="control-group">
-                <label for="speed">Speed:</label>
-                <input type="range" id="speed" min="1" max="20" value="5">
-                <span id="speedValue">5</span>
+        <div class="controls-panel">
+            <h2>🧬 Game of Life</h2>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="speed">Speed:</label>
+                    <input type="range" id="speed" min="1" max="20" value="5">
+                    <span id="speedValue">5</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="pattern">Pattern:</label>
+                    <select id="pattern">
+                        <option value="random">Random</option>
+                        <option value="glider">Glider</option>
+                        <option value="pulsar">Pulsar</option>
+                        <option value="gosper">Gosper Gun</option>
+                        <option value="clear">Clear</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="cellSize">Cell Size:</label>
+                    <input type="range" id="cellSize" min="4" max="20" value="8">
+                    <span id="cellSizeValue">8</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="renderingMode">Rendering:</label>
+                    <select id="renderingMode">
+                        <option value="euclidean">Euclidean</option>
+                        <option value="spherical">Spherical</option>
+                    </select>
+                </div>
+                
+                <button id="playPause" onclick="togglePlayPause()">▶️ Start</button>
+                <button onclick="step()">⏭️ Step</button>
+                <button onclick="clearGrid()">🗑️ Clear</button>
+                <button onclick="loadPattern()">🎲 Load Pattern</button>
             </div>
             
-            <div class="control-group">
-                <label for="pattern">Pattern:</label>
-                <select id="pattern">
-                    <option value="random">Random</option>
-                    <option value="glider">Glider</option>
-                    <option value="pulsar">Pulsar</option>
-                    <option value="gosper">Gosper Gun</option>
-                    <option value="clear">Clear</option>
-                </select>
+            <div class="stats">
+                <div class="stat">Generation: <span id="generation">0</span></div>
+                <div class="stat">Living Cells: <span id="livingCells">0</span></div>
+                <div class="stat">Status: <span id="status">Paused</span></div>
             </div>
             
-            <div class="control-group">
-                <label for="cellSize">Cell Size:</label>
-                <input type="range" id="cellSize" min="4" max="20" value="8">
-                <span id="cellSizeValue">8</span>
+            <div class="info">
+                <p>Click to toggle cells • Use patterns to explore different behaviors</p>
             </div>
-            
-            <button id="playPause" onclick="togglePlayPause()">▶️ Start</button>
-            <button onclick="step()">⏭️ Step</button>
-            <button onclick="clearGrid()">🗑️ Clear</button>
-            <button onclick="loadPattern()">🎲 Load Pattern</button>
         </div>
         
-        <canvas id="canvas" width="800" height="600"></canvas>
-        
-        <div class="stats">
-            <div class="stat">Generation: <span id="generation">0</span></div>
-            <div class="stat">Living Cells: <span id="livingCells">0</span></div>
-            <div class="stat">Status: <span id="status">Paused</span></div>
-        </div>
-        
-        <div class="info">
-            <p>Click to toggle cells • Use patterns to explore different behaviors</p>
+        <div class="canvas-container">
+            <canvas id="canvas" width="800" height="600"></canvas>
         </div>
     </div>
 
