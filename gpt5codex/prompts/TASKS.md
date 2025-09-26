@@ -22,27 +22,17 @@ Generate a series of experimental standalone one-pager apps:
    - [I] Draw the bounding box as the user moves their mouse. (**COMPLETED**: 20250926-120500)
 
 
-# v00.00.02 - move controls
-1. [ ] Review the following features:
-  - [ ] Move all the controls to the left side of the screen.
-2. [ ] Update
-  - [ ] game-of-life-explorer.
-  - [ ] lindenmeyer-explorer.
-  - [ ] mandelbrot-explorer.
-  - [ ] voronoi-explorer.
+# v00.00.02 - Advanced Rendering Features
+1. [R] Add an dropdown to switch between Euclidean and Spherical renderings.
+  - [R] Right dragging will rotate the Sphere.
+  - [R] Add a Euclidean Left-Right, Up-Down, Full Wraparound options
+2. [R] Update
+  - [R] game-of-life-explorer.
+  - [R] lindenmeyer-explorer.
+  - [R] mandelbrot-explorer.
+  - [R] voronoi-explorer.
 
-
-# v00.00.03 - Advanced Rendering Features
-1. [ ] Add an dropdown to switch between Euclidean and Spherical renderings.
-  - [ ] Right dragging will rotate the Sphere.
-  - [ ] Add a Euclidean Left-Right, Up-Down, Full Wraparound options
-2. [ ] Update
-  - [ ] game-of-life-explorer.
-  - [ ] lindenmeyer-explorer.
-  - [ ] mandelbrot-explorer.
-  - [ ] voronoi-explorer.
-
-## implementation
+## v00.00.01 implementation
 
 - Create a shared scaffolding for explorer one-pagers: routing stub, build script, base layout, and reusable control panel styling.
 - Implement Voronoi Diagram Explorer: render Voronoi cells with stroke styling, enable drag-and-drop for sites, and re-render on drag interactions.
@@ -50,3 +40,9 @@ Generate a series of experimental standalone one-pager apps:
 - Implement Lindenmeyer System Explorer: real-time L-system renderer with editable grammar textarea and preview updates on change.
 - Implement Mandelbrot Set Explorer: canvas renderer with zoom/pan and live bounding-box overlay during mouse drag.
 - Document features and usage in `README.md`, execute smoke tests in `tests/`, and update task statuses with completion timestamps.
+
+## v00.00.02 implementation
+- Review the current rendering implementations for each explorer to assess how Euclidean and spherical modes can share abstractions.
+- Design and build shared UI/state components for selecting rendering modes, including the dropdown, rotation handling, and wraparound options.
+- Integrate the new rendering mode support into `game-of-life-explorer`, `lindenmeyer-explorer`, `mandelbrot-explorer`, and `voronoi-explorer`.
+- Update `README.md`, run verification in `tests/`, and record task completions with timestamps once confirmed.
