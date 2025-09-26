@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lindenmeyer System Explorer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2d5016 0%, #4a7c59 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            gap: 20px;
+        }
+        
+        .controls-panel {
+            width: 300px;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            height: fit-content;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        input, button, select {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+        
+        button {
+            background: #8fbc8f;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #7ba07b;
+        }
+        
+        button.running {
+            background: #ff6b6b;
+        }
+        
+        button.running:hover {
+            background: #ff5252;
+        }
+        
+        #canvas {
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: #1a1a1a;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            font-size: 16px;
+        }
+        
+        .stat {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 5px;
+        }
+        
+        .preset-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls-panel">
+            <h2>🌿 Lindenmeyer System</h2>
+            
+            <div class="controls">
+            <div class="control-group">
+                <label for="iterations">Iterations:</label>
+                <input type="range" id="iterations" min="0" max="8" value="4">
+                <span id="iterationsValue">4</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="angle">Angle:</label>
+                <input type="range" id="angle" min="5" max="45" value="25">
+                <span id="angleValue">25°</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="length">Length:</label>
+                <input type="range" id="length" min="5" max="20" value="10">
+                <span id="lengthValue">10</span>
+            </div>
+            
+            <div class="control-group">
+                <label for="renderingMode">Rendering:</label>
+                <select id="renderingMode">
+                    <option value="euclidean">Euclidean</option>
+                    <option value="spherical">Spherical</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="wraparoundMode">Wraparound:</label>
+                <select id="wraparoundMode">
+                    <option value="none">None</option>
+                    <option value="horizontal">Left-Right</option>
+                    <option value="vertical">Up-Down</option>
+                    <option value="full">Full Wraparound</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="preset">Preset:</label>
+                <select id="preset">
+                    <option value="dragon">Dragon Curve</option>
+                    <option value="sierpinski">Sierpinski Triangle</option>
+                    <option value="koch">Koch Snowflake</option>
+                    <option value="plant">Plant Growth</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </div>
+            
+            <button onclick="generateLSystem()">🌱 Generate</button>
+            <button id="animateBtn" onclick="toggleAnimation()">▶️ Animate</button>
+            <button onclick="clearCanvas()">🗑️ Clear</button>
+            </div>
+            
+            <div class="l-system-editor" style="margin-top: 20px;">
+                <label for="lSystemText" style="display: block; margin-bottom: 10px; font-weight: bold;">L-System Definition:</label>
+                <textarea id="lSystemText" rows="4" style="width: 100%; padding: 10px; border: none; border-radius: 5px; background: rgba(255,255,255,0.9); color: #333; font-family: monospace; font-size: 14px;" placeholder="Enter L-System rules here..."></textarea>
+                <div style="margin-top: 10px; font-size: 12px; opacity: 0.8;">
+                    <strong>Format:</strong> axiom: F, rules: F→F+F-F-F+F, G→GG (one per line)
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat">Iteration: <span id="currentIteration">0</span></div>
+                <div class="stat">Commands: <span id="commandCount">0</span></div>
+                <div class="stat">Status: <span id="status">Ready</span></div>
+            </div>
+            
+            <div class="preset-info" id="presetInfo">
+                <strong>Dragon Curve:</strong> A fractal curve that resembles a dragon. Uses F, +, - commands with angle 90°.
+            </div>
+            
+            <div class="info">
+                <p>Adjust parameters to explore different fractal patterns • Use presets to see classic L-systems</p>
+            </div>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="canvas" width="800" height="600"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let currentSystem = null;
+        let animationId = null;
+        let isAnimating = false;
+        let currentIteration = 0;
+        let maxIterations = 0;
+        
+        // L-system definitions
+        const systems = {
+            dragon: {
+                axiom: 'F',
+                rules: { 'F': 'F+F', 'G': 'F-G' },
+                angle: 90,
+                description: 'A fractal curve that resembles a dragon. Uses F, +, - commands with angle 90°.'
+            },
+            sierpinski: {
+                axiom: 'F-G-G',
+                rules: { 'F': 'F-G+F+G-F', 'G': 'GG' },
+                angle: 120,
+                description: 'Sierpinski triangle fractal. Creates triangular patterns with 120° angles.'
+            },
+            koch: {
+                axiom: 'F',
+                rules: { 'F': 'F+F-F-F+F' },
+                angle: 90,
+                description: 'Koch snowflake fractal. Creates snowflake-like patterns with 90° angles.'
+            },
+            plant: {
+                axiom: 'F',
+                rules: { 'F': 'F[+F]F[-F]F' },
+                angle: 25,
+                description: 'Plant growth simulation. Uses brackets for branching with 25° angles.'
+            }
+        };
+        
+        // Initialize
+        generateLSystem();
+        updateLSystemText(systems.dragon);
+        
+        // Event listeners
+        document.getElementById('iterations').addEventListener('input', function() {
+            document.getElementById('iterationsValue').textContent = this.value;
+        });
+        
+        document.getElementById('angle').addEventListener('input', function() {
+            document.getElementById('angleValue').textContent = this.value + '°';
+        });
+        
+        document.getElementById('length').addEventListener('input', function() {
+            document.getElementById('lengthValue').textContent = this.value;
+        });
+        
+        document.getElementById('preset').addEventListener('change', function() {
+            const preset = systems[this.value];
+            if (preset) {
+                document.getElementById('angle').value = preset.angle;
+                document.getElementById('angleValue').textContent = preset.angle + '°';
+                document.getElementById('presetInfo').innerHTML = `<strong>${this.options[this.selectedIndex].text}:</strong> ${preset.description}`;
+                
+                // Update L-System text
+                updateLSystemText(preset);
+            }
+        });
+        
+        document.getElementById('renderingMode').addEventListener('change', generateLSystem);
+        
+        document.getElementById('lSystemText').addEventListener('input', function() {
+            if (document.getElementById('preset').value === 'custom') {
+                parseCustomLSystem();
+            }
+        });
+        
+        function generateLSystem() {
+            const iterations = parseInt(document.getElementById('iterations').value);
+            const angle = parseInt(document.getElementById('angle').value);
+            const length = parseInt(document.getElementById('length').value);
+            const preset = document.getElementById('preset').value;
+            
+            if (preset !== 'custom' && systems[preset]) {
+                currentSystem = { ...systems[preset] };
+                currentSystem.angle = angle;
+            } else {
+                // Custom system
+                currentSystem = {
+                    axiom: 'F',
+                    rules: { 'F': 'F+F-F-F+F' },
+                    angle: angle,
+                    description: 'Custom L-system with user-defined parameters.'
+                };
+            }
+            
+            maxIterations = iterations;
+            currentIteration = 0;
+            
+            if (isAnimating) {
+                animateLSystem();
+            } else {
+                drawLSystem();
+            }
+        }
+        
+        function drawLSystem() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const iterations = parseInt(document.getElementById('iterations').value);
+            const length = parseInt(document.getElementById('length').value);
+            
+            // Generate the string
+            let string = currentSystem.axiom;
+            for (let i = 0; i < iterations; i++) {
+                string = applyRules(string, currentSystem.rules);
+            }
+            
+            // Draw the system
+            drawString(string, length, currentSystem.angle);
+            
+            updateStats(iterations, string.length);
+        }
+        
+        function animateLSystem() {
+            if (!isAnimating) return;
+            
+            const length = parseInt(document.getElementById('length').value);
+            
+            if (currentIteration <= maxIterations) {
+                // Generate string for current iteration
+                let string = currentSystem.axiom;
+                for (let i = 0; i < currentIteration; i++) {
+                    string = applyRules(string, currentSystem.rules);
+                }
+                
+                // Clear and redraw
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawString(string, length, currentSystem.angle);
+                updateStats(currentIteration, string.length);
+                
+                currentIteration++;
+                
+                setTimeout(() => {
+                    animationId = requestAnimationFrame(animateLSystem);
+                }, 800);
+            } else {
+                isAnimating = false;
+                document.getElementById('animateBtn').textContent = '▶️ Animate';
+                document.getElementById('animateBtn').classList.remove('running');
+                document.getElementById('status').textContent = 'Complete';
+            }
+        }
+        
+        function applyRules(string, rules) {
+            let result = '';
+            for (let char of string) {
+                result += rules[char] || char;
+            }
+            return result;
+        }
+        
+        function drawString(string, length, angle) {
+            const startX = canvas.width / 2;
+            const startY = canvas.height - 50;
+            
+            let x = startX;
+            let y = startY;
+            let currentAngle = -90; // Start pointing up
+            const stack = [];
+            
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            
+            for (let char of string) {
+                switch (char) {
+                    case 'F':
+                    case 'G':
+                        // Draw forward
+                        const newX = x + Math.cos(currentAngle * Math.PI / 180) * length;
+                        const newY = y + Math.sin(currentAngle * Math.PI / 180) * length;
+                        ctx.lineTo(newX, newY);
+                        x = newX;
+                        y = newY;
+                        break;
+                    case '+':
+                        // Turn right
+                        currentAngle += angle;
+                        break;
+                    case '-':
+                        // Turn left
+                        currentAngle -= angle;
+                        break;
+                    case '[':
+                        // Save current state
+                        stack.push({ x, y, angle: currentAngle });
+                        break;
+                    case ']':
+                        // Restore state
+                        if (stack.length > 0) {
+                            const state = stack.pop();
+                            x = state.x;
+                            y = state.y;
+                            currentAngle = state.angle;
+                            ctx.moveTo(x, y);
+                        }
+                        break;
+                }
+            }
+            
+            ctx.stroke();
+        }
+        
+        function toggleAnimation() {
+            if (isAnimating) {
+                cancelAnimationFrame(animationId);
+                isAnimating = false;
+                document.getElementById('animateBtn').textContent = '▶️ Animate';
+                document.getElementById('animateBtn').classList.remove('running');
+                document.getElementById('status').textContent = 'Paused';
+            } else {
+                isAnimating = true;
+                currentIteration = 0;
+                document.getElementById('animateBtn').textContent = '⏸️ Stop';
+                document.getElementById('animateBtn').classList.add('running');
+                document.getElementById('status').textContent = 'Animating';
+                animateLSystem();
+            }
+        }
+        
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            updateStats(0, 0);
+        }
+        
+        function updateStats(iteration, commands) {
+            document.getElementById('currentIteration').textContent = iteration;
+            document.getElementById('commandCount').textContent = commands;
+        }
+        
+        function updateLSystemText(preset) {
+            const textarea = document.getElementById('lSystemText');
+            let text = `axiom: ${preset.axiom}\n`;
+            text += `rules:\n`;
+            for (let [key, value] of Object.entries(preset.rules)) {
+                text += `${key} → ${value}\n`;
+            }
+            textarea.value = text;
+        }
+        
+        function parseCustomLSystem() {
+            const text = document.getElementById('lSystemText').value;
+            const lines = text.split('\n');
+            
+            let axiom = 'F';
+            let rules = {};
+            
+            for (let line of lines) {
+                line = line.trim();
+                if (line.startsWith('axiom:')) {
+                    axiom = line.split(':')[1].trim();
+                } else if (line.includes('→') || line.includes('->')) {
+                    const parts = line.split(/[→-]>/);
+                    if (parts.length === 2) {
+                        const key = parts[0].trim();
+                        const value = parts[1].trim();
+                        rules[key] = value;
+                    }
+                }
+            }
+            
+            if (Object.keys(rules).length > 0) {
+                currentSystem = {
+                    axiom: axiom,
+                    rules: rules,
+                    angle: parseInt(document.getElementById('angle').value),
+                    description: 'Custom L-system with user-defined parameters.'
+                };
+            }
+        }
+    </script>
+</body>
+</html>

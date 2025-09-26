@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mandelbrot Set Explorer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c1445 0%, #1a237e 50%, #3949ab 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            gap: 20px;
+        }
+        
+        .controls-panel {
+            width: 300px;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            height: fit-content;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        input, button, select {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.9);
+            color: #333;
+        }
+        
+        button {
+            background: #ff6b6b;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #ff5252;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        #canvas {
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            background: #000;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            cursor: crosshair;
+        }
+        
+        .info {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            font-size: 16px;
+        }
+        
+        .stat {
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 5px;
+        }
+        
+        .loading {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 18px;
+            color: #ff6b6b;
+        }
+        
+        .coordinates {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls-panel">
+            <h2>🌀 Mandelbrot Set</h2>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="maxIterations">Max Iterations:</label>
+                    <input type="range" id="maxIterations" min="50" max="1000" value="200">
+                    <span id="maxIterationsValue">200</span>
+                </div>
+                
+                <div class="control-group">
+                    <label for="colorScheme">Color Scheme:</label>
+                    <select id="colorScheme">
+                        <option value="rainbow">Rainbow</option>
+                        <option value="fire">Fire</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="grayscale">Grayscale</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="renderingMode">Rendering:</label>
+                    <select id="renderingMode">
+                        <option value="euclidean">Euclidean</option>
+                        <option value="spherical">Spherical</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="wraparoundMode">Wraparound:</label>
+                    <select id="wraparoundMode">
+                        <option value="none">None</option>
+                        <option value="horizontal">Left-Right</option>
+                        <option value="vertical">Up-Down</option>
+                        <option value="full">Full Wraparound</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="zoom">Zoom:</label>
+                    <input type="range" id="zoom" min="1" max="100" value="1">
+                    <span id="zoomValue">1x</span>
+                </div>
+                
+                <button onclick="generateMandelbrot()">🌀 Generate</button>
+                <button onclick="resetView()">🏠 Reset View</button>
+                <button onclick="saveImage()">💾 Save Image</button>
+            </div>
+            
+            <div class="stats">
+                <div class="stat">Iterations: <span id="currentIterations">200</span></div>
+                <div class="stat">Zoom: <span id="currentZoom">1x</span></div>
+                <div class="stat">Status: <span id="status">Ready</span></div>
+            </div>
+            
+            <div class="coordinates" id="coordinates">
+                Click and drag to zoom into the Mandelbrot set
+            </div>
+            
+            <div class="info">
+                <p>Click and drag to zoom • Use controls to adjust parameters • Explore the infinite complexity!</p>
+            </div>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="canvas" width="600" height="600"></canvas>
+            
+            <div class="loading" id="loading" style="display: none;">
+                🔄 Computing Mandelbrot Set...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let isGenerating = false;
+        let currentZoom = 1;
+        let centerX = 0;
+        let centerY = 0;
+        let isDragging = false;
+        let dragStart = { x: 0, y: 0 };
+        let dragEnd = { x: 0, y: 0 };
+        
+        // Initialize
+        generateMandelbrot();
+        
+        // Event listeners
+        document.getElementById('maxIterations').addEventListener('input', function() {
+            document.getElementById('maxIterationsValue').textContent = this.value;
+        });
+        
+        document.getElementById('zoom').addEventListener('input', function() {
+            document.getElementById('zoomValue').textContent = this.value + 'x';
+        });
+        
+        document.getElementById('colorScheme').addEventListener('change', generateMandelbrot);
+        document.getElementById('renderingMode').addEventListener('change', generateMandelbrot);
+        
+        // Mouse events for zooming
+        canvas.addEventListener('mousedown', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            dragStart.x = e.clientX - rect.left;
+            dragStart.y = e.clientY - rect.top;
+            isDragging = true;
+        });
+        
+        canvas.addEventListener('mousemove', function(e) {
+            if (isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                dragEnd.x = e.clientX - rect.left;
+                dragEnd.y = e.clientY - rect.top;
+                
+                // Draw selection rectangle
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                generateMandelbrot();
+                
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(
+                    Math.min(dragStart.x, dragEnd.x),
+                    Math.min(dragStart.y, dragEnd.y),
+                    Math.abs(dragEnd.x - dragStart.x),
+                    Math.abs(dragEnd.y - dragStart.y)
+                );
+                ctx.setLineDash([]);
+            } else {
+                // Show preview bounding box
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // Redraw Mandelbrot set
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                generateMandelbrot();
+                
+                // Draw preview bounding box
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([3, 3]);
+                ctx.strokeRect(x - 50, y - 50, 100, 100);
+                ctx.setLineDash([]);
+            }
+        });
+        
+        canvas.addEventListener('mouseup', function(e) {
+            if (isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                dragEnd.x = e.clientX - rect.left;
+                dragEnd.y = e.clientY - rect.top;
+                
+                // Zoom into selected area
+                zoomToArea(dragStart, dragEnd);
+                isDragging = false;
+            }
+        });
+        
+        canvas.addEventListener('mouseleave', function(e) {
+            // Clear preview when mouse leaves
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            generateMandelbrot();
+        });
+        
+        function generateMandelbrot() {
+            if (isGenerating) return;
+            
+            isGenerating = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('status').textContent = 'Computing...';
+            
+            const maxIterations = parseInt(document.getElementById('maxIterations').value);
+            const colorScheme = document.getElementById('colorScheme').value;
+            
+            // Use requestAnimationFrame to prevent blocking
+            requestAnimationFrame(() => {
+                computeMandelbrot(maxIterations, colorScheme);
+                isGenerating = false;
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('status').textContent = 'Complete';
+                document.getElementById('currentIterations').textContent = maxIterations;
+                document.getElementById('currentZoom').textContent = currentZoom + 'x';
+            });
+        }
+        
+        function computeMandelbrot(maxIterations, colorScheme) {
+            const width = canvas.width;
+            const height = canvas.height;
+            const imageData = ctx.createImageData(width, height);
+            const data = imageData.data;
+            
+            // Calculate bounds based on zoom and center
+            const zoom = currentZoom;
+            const xMin = -2.5 / zoom + centerX;
+            const xMax = 1.5 / zoom + centerX;
+            const yMin = -2.0 / zoom + centerY;
+            const yMax = 2.0 / zoom + centerY;
+            
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const real = xMin + (xMax - xMin) * x / width;
+                    const imag = yMin + (yMax - yMin) * y / height;
+                    
+                    const iterations = mandelbrotIterations(real, imag, maxIterations);
+                    const color = getColor(iterations, maxIterations, colorScheme);
+                    
+                    const index = (y * width + x) * 4;
+                    data[index] = color.r;     // Red
+                    data[index + 1] = color.g; // Green
+                    data[index + 2] = color.b; // Blue
+                    data[index + 3] = 255;     // Alpha
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+        }
+        
+        function mandelbrotIterations(cx, cy, maxIterations) {
+            let x = 0;
+            let y = 0;
+            let iterations = 0;
+            
+            while (x * x + y * y <= 4 && iterations < maxIterations) {
+                const xtemp = x * x - y * y + cx;
+                y = 2 * x * y + cy;
+                x = xtemp;
+                iterations++;
+            }
+            
+            return iterations;
+        }
+        
+        function getColor(iterations, maxIterations, scheme) {
+            if (iterations === maxIterations) {
+                return { r: 0, g: 0, b: 0 }; // Black for points in the set
+            }
+            
+            const t = iterations / maxIterations;
+            
+            switch (scheme) {
+                case 'rainbow':
+                    const hue = t * 360;
+                    return hslToRgb(hue, 1, 0.5);
+                case 'fire':
+                    return {
+                        r: Math.floor(255 * t),
+                        g: Math.floor(128 * t),
+                        b: Math.floor(64 * t)
+                    };
+                case 'ocean':
+                    return {
+                        r: Math.floor(64 * t),
+                        g: Math.floor(128 * t),
+                        b: Math.floor(255 * t)
+                    };
+                case 'grayscale':
+                    const gray = Math.floor(255 * t);
+                    return { r: gray, g: gray, b: gray };
+                default:
+                    return { r: 255, g: 255, b: 255 };
+            }
+        }
+        
+        function hslToRgb(h, s, l) {
+            const c = (1 - Math.abs(2 * l - 1)) * s;
+            const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+            const m = l - c / 2;
+            
+            let r, g, b;
+            
+            if (0 <= h && h < 60) {
+                r = c; g = x; b = 0;
+            } else if (60 <= h && h < 120) {
+                r = x; g = c; b = 0;
+            } else if (120 <= h && h < 180) {
+                r = 0; g = c; b = x;
+            } else if (180 <= h && h < 240) {
+                r = 0; g = x; b = c;
+            } else if (240 <= h && h < 300) {
+                r = x; g = 0; b = c;
+            } else if (300 <= h && h < 360) {
+                r = c; g = 0; b = x;
+            }
+            
+            return {
+                r: Math.floor((r + m) * 255),
+                g: Math.floor((g + m) * 255),
+                b: Math.floor((b + m) * 255)
+            };
+        }
+        
+        function zoomToArea(start, end) {
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Convert screen coordinates to complex plane coordinates
+            const xMin = -2.5 / currentZoom + centerX;
+            const xMax = 1.5 / currentZoom + centerX;
+            const yMin = -2.0 / currentZoom + centerY;
+            const yMax = 2.0 / currentZoom + centerY;
+            
+            const newXMin = xMin + (xMax - xMin) * Math.min(start.x, end.x) / width;
+            const newXMax = xMin + (xMax - xMin) * Math.max(start.x, end.x) / width;
+            const newYMin = yMin + (yMax - yMin) * Math.min(start.y, end.y) / height;
+            const newYMax = yMin + (yMax - yMin) * Math.max(start.y, end.y) / height;
+            
+            // Update center and zoom
+            centerX = (newXMin + newXMax) / 2;
+            centerY = (newYMin + newYMax) / 2;
+            currentZoom *= 2;
+            
+            generateMandelbrot();
+        }
+        
+        function resetView() {
+            currentZoom = 1;
+            centerX = 0;
+            centerY = 0;
+            generateMandelbrot();
+        }
+        
+        function saveImage() {
+            const link = document.createElement('a');
+            link.download = 'mandelbrot-set.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    </script>
+</body>
+</html>
