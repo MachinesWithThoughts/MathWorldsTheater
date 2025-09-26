@@ -190,128 +190,34 @@
   </head>
   <body>
     <div id="app"></div>
+    <script src="../../shared/ui.js"></script>
+    <script src="../../shared/rendering.js"></script>
     <script>
-      (function () {
-        function setupApp({ title, description }) {
-          const root = document.getElementById("app");
-          const controlsPanel = document.createElement("aside");
-          controlsPanel.className = "controls-panel";
-
-          const heading = document.createElement("h1");
-          heading.textContent = title;
-          controlsPanel.appendChild(heading);
-
-          if (description) {
-            const para = document.createElement("p");
-            para.className = "description";
-            para.textContent = description;
-            controlsPanel.appendChild(para);
-          }
-
-          const controlStack = document.createElement("div");
-          controlStack.className = "controls-grid";
-          controlsPanel.appendChild(controlStack);
-
-          const stage = document.createElement("section");
-          stage.className = "canvas-stage";
-          const stageInner = document.createElement("div");
-          stageInner.className = "stage-inner";
-          stage.appendChild(stageInner);
-
-          root.appendChild(controlsPanel);
-          root.appendChild(stage);
-
-          return { controlStack, stageInner };
-        }
-
-        function createControlsSection(title, note) {
-          const section = document.createElement("section");
-          section.className = "controls-section";
-          const heading = document.createElement("h2");
-          heading.textContent = title;
-          section.appendChild(heading);
-          if (note) {
-            const para = document.createElement("p");
-            para.className = "note";
-            para.textContent = note;
-            section.appendChild(para);
-          }
-          return section;
-        }
-
-        function createButton(label, onClick) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "control-button";
-          button.textContent = label;
-          button.addEventListener("click", onClick);
-          return button;
-        }
-
-        function createSlider({ label, min = 0, max = 100, step = 1, value = 0, onChange }) {
-          const wrapper = document.createElement("label");
-          wrapper.className = "slider";
-          const title = document.createElement("span");
-          title.textContent = label;
-          const slider = document.createElement("input");
-          slider.type = "range";
-          slider.min = String(min);
-          slider.max = String(max);
-          slider.step = String(step);
-          slider.value = String(value);
-          const valueLabel = document.createElement("span");
-          valueLabel.className = "value";
-          valueLabel.textContent = String(value);
-          slider.addEventListener("input", (event) => {
-            const newValue = Number(event.target.value);
-            valueLabel.textContent = String(newValue);
-            if (onChange) onChange(newValue);
-          });
-          wrapper.appendChild(title);
-          wrapper.appendChild(slider);
-          wrapper.appendChild(valueLabel);
-          return { wrapper, slider, valueLabel };
-        }
-
-        function observeElementSize(element, callback) {
-          const notify = ({ width, height }) => {
-            if (width === 0 || height === 0) return;
-            callback({ width, height });
-          };
-
-          if (typeof ResizeObserver !== "undefined") {
-            const observer = new ResizeObserver((entries) => {
-              entries.forEach((entry) => {
-                const { width, height } = entry.contentRect;
-                notify({ width, height });
-              });
-            });
-            observer.observe(element);
-          } else {
-            window.addEventListener("resize", () => {
-              const rect = element.getBoundingClientRect();
-              notify({ width: rect.width, height: rect.height });
-            });
-          }
-
-          requestAnimationFrame(() => {
-            const rect = element.getBoundingClientRect();
-            notify({ width: rect.width, height: rect.height });
-          });
-        }
+      (function (global) {
+        const {
+          setupApp,
+          createControlsSection,
+          createButton,
+          createSlider,
+          createSelect,
+          observeElementSize,
+        } = global.MathWorldsUI;
+        const { createRenderController } = global.MathWorldsRendering;
 
         const config = {
           columns: 64,
           rows: 48,
-          cellSize: 12,
           running: false,
           speed: 6,
+          renderMode: "euclidean",
+          wrapMode: "none",
         };
 
         const state = {
           grid: new Set(),
           generation: 0,
-          animationFrame: null,
+          timer: null,
+          dragMode: null,
         };
 
         const { controlStack, stageInner } = setupApp({
@@ -322,47 +228,57 @@
         const canvas = document.createElement("canvas");
         canvas.className = "render-surface";
         stageInner.appendChild(canvas);
-        const ctx = canvas.getContext("2d");
+
+        const renderController = createRenderController(canvas, {
+          background: "rgba(15, 23, 42, 0.95)",
+        });
+        renderController.setWrapMode(config.wrapMode);
+
+        const offscreenCanvas = document.createElement("canvas");
+        const offscreenCtx = offscreenCanvas.getContext("2d", { alpha: false });
 
         function keyFor(x, y) {
           return `${x},${y}`;
         }
 
-        function drawGrid() {
-          ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function getWrapFlags() {
+          if (config.renderMode === "spherical") {
+            return { wrapX: true, wrapY: true };
+          }
+          const wrapMode = config.wrapMode;
+          return {
+            wrapX: wrapMode === "horizontal" || wrapMode === "full",
+            wrapY: wrapMode === "vertical" || wrapMode === "full",
+          };
+        }
 
-          ctx.strokeStyle = "rgba(148, 163, 184, 0.08)";
-          ctx.lineWidth = 1;
-
-          for (let x = 0; x <= config.columns; x += 1) {
-            ctx.beginPath();
-            ctx.moveTo(x * config.cellSize + 0.5, 0);
-            ctx.lineTo(x * config.cellSize + 0.5, canvas.height);
-            ctx.stroke();
+        function normalizeCoordinates(x, y) {
+          const { wrapX, wrapY } = getWrapFlags();
+          if (wrapX) {
+            x = ((x % config.columns) + config.columns) % config.columns;
+          } else if (x < 0 || x >= config.columns) {
+            return null;
           }
 
-          for (let y = 0; y <= config.rows; y += 1) {
-            ctx.beginPath();
-            ctx.moveTo(0, y * config.cellSize + 0.5);
-            ctx.lineTo(canvas.width, y * config.cellSize + 0.5);
-            ctx.stroke();
+          if (wrapY) {
+            y = ((y % config.rows) + config.rows) % config.rows;
+          } else if (y < 0 || y >= config.rows) {
+            return null;
           }
 
-          ctx.fillStyle = "#38bdf8";
-          state.grid.forEach((key) => {
-            const [x, y] = key.split(",").map(Number);
-            ctx.fillRect(
-              x * config.cellSize + 1,
-              y * config.cellSize + 1,
-              config.cellSize - 2,
-              config.cellSize - 2,
-            );
-          });
+          return { x, y };
+        }
 
-          ctx.fillStyle = "rgba(148, 163, 184, 0.6)";
-          ctx.font = "14px 'JetBrains Mono', monospace";
-          ctx.fillText(`Generation ${state.generation}`, 12, canvas.height - 12);
+        function locateCell(point) {
+          const { cssWidth, cssHeight } = renderController.getState();
+          const cellWidth = cssWidth / config.columns;
+          const cellHeight = cssHeight / config.rows;
+          if (!Number.isFinite(cellWidth) || !Number.isFinite(cellHeight) || cellWidth <= 0 || cellHeight <= 0) {
+            return null;
+          }
+          const rawX = Math.floor(point.x / cellWidth);
+          const rawY = Math.floor(point.y / cellHeight);
+          return normalizeCoordinates(rawX, rawY);
         }
 
         function neighbors(x, y) {
@@ -370,16 +286,85 @@
           for (let dx = -1; dx <= 1; dx += 1) {
             for (let dy = -1; dy <= 1; dy += 1) {
               if (dx === 0 && dy === 0) continue;
-              const nx = x + dx;
-              const ny = y + dy;
-              if (nx >= 0 && nx < config.columns && ny >= 0 && ny < config.rows) {
-                if (state.grid.has(keyFor(nx, ny))) {
-                  count += 1;
-                }
+              const coords = normalizeCoordinates(x + dx, y + dy);
+              if (!coords) continue;
+              if (state.grid.has(keyFor(coords.x, coords.y))) {
+                count += 1;
               }
             }
           }
           return count;
+        }
+
+        function drawScene(targetCtx, { width, height }) {
+          const pixelWidth = Math.max(1, Math.round(width));
+          const pixelHeight = Math.max(1, Math.round(height));
+
+          if (offscreenCanvas.width !== pixelWidth || offscreenCanvas.height !== pixelHeight) {
+            offscreenCanvas.width = pixelWidth;
+            offscreenCanvas.height = pixelHeight;
+          }
+
+          const ctx = offscreenCtx;
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, pixelWidth, pixelHeight);
+          ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+          ctx.fillRect(0, 0, pixelWidth, pixelHeight);
+
+          const cellWidth = pixelWidth / config.columns;
+          const cellHeight = pixelHeight / config.rows;
+
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.08)";
+          ctx.lineWidth = 1;
+
+          ctx.beginPath();
+          for (let x = 1; x < config.columns; x += 1) {
+            const px = x * cellWidth;
+            ctx.moveTo(px, 0);
+            ctx.lineTo(px, pixelHeight);
+          }
+          for (let y = 1; y < config.rows; y += 1) {
+            const py = y * cellHeight;
+            ctx.moveTo(0, py);
+            ctx.lineTo(pixelWidth, py);
+          }
+          ctx.stroke();
+
+          const paddingX = Math.min(2, cellWidth * 0.2);
+          const paddingY = Math.min(2, cellHeight * 0.2);
+          const drawWidth = Math.max(0, cellWidth - paddingX * 2);
+          const drawHeight = Math.max(0, cellHeight - paddingY * 2);
+
+          ctx.fillStyle = "#38bdf8";
+          state.grid.forEach((key) => {
+            const [cx, cy] = key.split(",").map(Number);
+            const left = cx * cellWidth + paddingX;
+            const top = cy * cellHeight + paddingY;
+            ctx.fillRect(left, top, drawWidth, drawHeight);
+          });
+
+          ctx.fillStyle = "rgba(148, 163, 184, 0.65)";
+          ctx.font = "14px 'JetBrains Mono', monospace";
+          ctx.textBaseline = "bottom";
+          ctx.fillText(`Generation ${state.generation}`, 12, pixelHeight - 12);
+
+          targetCtx.drawImage(
+            offscreenCanvas,
+            0,
+            0,
+            pixelWidth,
+            pixelHeight,
+            0,
+            0,
+            width,
+            height,
+          );
+        }
+
+        function draw() {
+          renderController.render((targetCtx, dimensions) => {
+            drawScene(targetCtx, dimensions);
+          });
         }
 
         function step() {
@@ -397,16 +382,24 @@
           }
           state.grid = next;
           state.generation += 1;
-          drawGrid();
+          draw();
         }
 
         function run() {
           if (!config.running) return;
           step();
-          const delay = 1200 / config.speed;
-          state.animationFrame = setTimeout(() => {
+          const delay = Math.max(16, 1200 / config.speed);
+          state.timer = setTimeout(() => {
             requestAnimationFrame(run);
           }, delay);
+        }
+
+        function stop() {
+          config.running = false;
+          if (state.timer) {
+            clearTimeout(state.timer);
+            state.timer = null;
+          }
         }
 
         function toggleRunning() {
@@ -415,24 +408,17 @@
             run();
             playPauseButton.textContent = "Pause";
           } else {
-            if (state.animationFrame) {
-              clearTimeout(state.animationFrame);
-              state.animationFrame = null;
-            }
+            stop();
             playPauseButton.textContent = "Play";
           }
         }
 
         function clearGrid() {
-          config.running = false;
-          if (state.animationFrame) {
-            clearTimeout(state.animationFrame);
-            state.animationFrame = null;
-          }
+          stop();
           state.grid.clear();
           state.generation = 0;
           playPauseButton.textContent = "Play";
-          drawGrid();
+          draw();
         }
 
         function seedGlider() {
@@ -442,7 +428,7 @@
           state.grid.add(keyFor(0, 2));
           state.grid.add(keyFor(1, 2));
           state.grid.add(keyFor(2, 2));
-          drawGrid();
+          draw();
         }
 
         function seedRandom() {
@@ -454,21 +440,10 @@
               }
             }
           }
-          drawGrid();
+          draw();
         }
 
-        canvas.addEventListener("click", (event) => {
-          const rect = canvas.getBoundingClientRect();
-          const x = Math.floor((event.clientX - rect.left) / config.cellSize);
-          const y = Math.floor((event.clientY - rect.top) / config.cellSize);
-          const key = keyFor(x, y);
-          if (state.grid.has(key)) {
-            state.grid.delete(key);
-          } else {
-            state.grid.add(key);
-          }
-          drawGrid();
-        });
+        let playPauseButton;
 
         const simulationControls = createControlsSection(
           "Simulation",
@@ -476,7 +451,7 @@
         );
         const buttonRow = document.createElement("div");
         buttonRow.className = "button-row";
-        const playPauseButton = createButton("Play", toggleRunning);
+        playPauseButton = createButton("Play", toggleRunning);
         const stepButton = createButton("Step", () => {
           if (!config.running) {
             step();
@@ -500,6 +475,63 @@
         simulationControls.appendChild(speedSlider.wrapper);
         controlStack.appendChild(simulationControls);
 
+        const renderingSection = createControlsSection(
+          "Rendering",
+          "Switch between Euclidean and spherical projections. Right-drag in spherical mode to rotate.",
+        );
+        const wrapSelect = createSelect({
+          label: "Euclidean Wraparound",
+          options: [
+            { value: "none", label: "None" },
+            { value: "horizontal", label: "Left-Right" },
+            { value: "vertical", label: "Up-Down" },
+            { value: "full", label: "Full" },
+          ],
+          value: config.wrapMode,
+          onChange: (value) => {
+            config.wrapMode = value;
+            renderController.setWrapMode(value);
+            draw();
+          },
+        });
+        const modeSelect = createSelect({
+          label: "Rendering Mode",
+          options: [
+            { value: "euclidean", label: "Euclidean" },
+            { value: "spherical", label: "Spherical" },
+          ],
+          value: config.renderMode,
+          onChange: (value) => {
+            config.renderMode = value;
+            renderController.setMode(value);
+            if (value === "spherical") {
+              renderController.setWrapMode("full");
+            } else {
+              renderController.setWrapMode(config.wrapMode);
+            }
+            syncRenderingControls();
+            draw();
+          },
+        });
+        const resetRotationButton = createButton("Reset Rotation", () => {
+          renderController.resetRotation();
+          draw();
+        });
+        renderingSection.appendChild(modeSelect.wrapper);
+        renderingSection.appendChild(wrapSelect.wrapper);
+        renderingSection.appendChild(resetRotationButton);
+        controlStack.appendChild(renderingSection);
+
+        function syncRenderingControls() {
+          modeSelect.select.value = config.renderMode;
+          wrapSelect.select.value = config.wrapMode;
+          const disabled = config.renderMode === "spherical";
+          wrapSelect.select.disabled = disabled;
+          wrapSelect.wrapper.style.opacity = disabled ? "0.6" : "";
+        }
+
+        syncRenderingControls();
+
         const seedsSection = createControlsSection("Seeds", "Start from classic or random patterns.");
         const seedButtons = document.createElement("div");
         seedButtons.className = "button-row";
@@ -509,17 +541,63 @@
         controlStack.appendChild(seedsSection);
 
         observeElementSize(stageInner, ({ width, height }) => {
-          const ratio = window.devicePixelRatio || 1;
-          canvas.width = Math.floor(width * ratio);
-          canvas.height = Math.floor(height * ratio);
-          canvas.style.width = `${width}px`;
-          canvas.style.height = `${height}px`;
-          ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-          drawGrid();
+          renderController.resize(width, height);
+          draw();
         });
 
-        drawGrid();
-      })();
+        renderController.onChange(draw);
+
+        canvas.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0) return;
+          const point = renderController.mapEventToScene(event);
+          if (!point) return;
+          const coords = locateCell(point);
+          if (!coords) return;
+          event.preventDefault();
+          const key = keyFor(coords.x, coords.y);
+          const alive = state.grid.has(key);
+          state.dragMode = alive ? "erase" : "paint";
+          if (alive) {
+            state.grid.delete(key);
+          } else {
+            state.grid.add(key);
+          }
+          draw();
+          canvas.setPointerCapture(event.pointerId);
+        });
+
+        canvas.addEventListener("pointermove", (event) => {
+          if (!state.dragMode) return;
+          const point = renderController.mapEventToScene(event);
+          if (!point) return;
+          const coords = locateCell(point);
+          if (!coords) return;
+          const key = keyFor(coords.x, coords.y);
+          if (state.dragMode === "paint") {
+            if (!state.grid.has(key)) {
+              state.grid.add(key);
+              draw();
+            }
+          } else if (state.dragMode === "erase") {
+            if (state.grid.delete(key)) {
+              draw();
+            }
+          }
+        });
+
+        function endPaint(event) {
+          if (state.dragMode && canvas.hasPointerCapture && canvas.hasPointerCapture(event.pointerId)) {
+            canvas.releasePointerCapture(event.pointerId);
+          }
+          state.dragMode = null;
+        }
+
+        canvas.addEventListener("pointerup", endPaint);
+        canvas.addEventListener("pointercancel", endPaint);
+        canvas.addEventListener("pointerleave", endPaint);
+
+        draw();
+      })(window);
     </script>
   </body>
 </html>

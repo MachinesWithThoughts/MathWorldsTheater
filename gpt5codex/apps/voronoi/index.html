@@ -190,115 +190,19 @@
   </head>
   <body>
     <div id="app"></div>
+    <script src="../../shared/ui.js"></script>
+    <script src="../../shared/rendering.js"></script>
     <script>
-      (function () {
-        function setupApp({ title, description }) {
-          const root = document.getElementById("app");
-          const controlsPanel = document.createElement("aside");
-          controlsPanel.className = "controls-panel";
-
-          const heading = document.createElement("h1");
-          heading.textContent = title;
-          controlsPanel.appendChild(heading);
-
-          if (description) {
-            const para = document.createElement("p");
-            para.className = "description";
-            para.textContent = description;
-            controlsPanel.appendChild(para);
-          }
-
-          const controlStack = document.createElement("div");
-          controlStack.className = "controls-grid";
-          controlsPanel.appendChild(controlStack);
-
-          const stage = document.createElement("section");
-          stage.className = "canvas-stage";
-          const stageInner = document.createElement("div");
-          stageInner.className = "stage-inner";
-          stage.appendChild(stageInner);
-
-          root.appendChild(controlsPanel);
-          root.appendChild(stage);
-
-          return { controlsPanel, controlStack, stageInner };
-        }
-
-        function createControlsSection(title, note) {
-          const section = document.createElement("section");
-          section.className = "controls-section";
-          const heading = document.createElement("h2");
-          heading.textContent = title;
-          section.appendChild(heading);
-          if (note) {
-            const para = document.createElement("p");
-            para.className = "note";
-            para.textContent = note;
-            section.appendChild(para);
-          }
-          return section;
-        }
-
-        function createButton(label, onClick) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "control-button";
-          button.textContent = label;
-          button.addEventListener("click", onClick);
-          return button;
-        }
-
-        function createSlider({ label, min = 0, max = 100, step = 1, value = 0, onChange }) {
-          const wrapper = document.createElement("label");
-          wrapper.className = "slider";
-          const title = document.createElement("span");
-          title.textContent = label;
-          const slider = document.createElement("input");
-          slider.type = "range";
-          slider.min = String(min);
-          slider.max = String(max);
-          slider.step = String(step);
-          slider.value = String(value);
-          const valueLabel = document.createElement("span");
-          valueLabel.className = "value";
-          valueLabel.textContent = String(value);
-          slider.addEventListener("input", (event) => {
-            const newValue = Number(event.target.value);
-            valueLabel.textContent = String(newValue);
-            if (onChange) onChange(newValue);
-          });
-          wrapper.appendChild(title);
-          wrapper.appendChild(slider);
-          wrapper.appendChild(valueLabel);
-          return { wrapper, slider, valueLabel };
-        }
-
-        function observeElementSize(element, callback) {
-          const notify = ({ width, height }) => {
-            if (width === 0 || height === 0) return;
-            callback({ width, height });
-          };
-
-          if (typeof ResizeObserver !== "undefined") {
-            const observer = new ResizeObserver((entries) => {
-              entries.forEach((entry) => {
-                const { width, height } = entry.contentRect;
-                notify({ width, height });
-              });
-            });
-            observer.observe(element);
-          } else {
-            window.addEventListener("resize", () => {
-              const rect = element.getBoundingClientRect();
-              notify({ width: rect.width, height: rect.height });
-            });
-          }
-
-          requestAnimationFrame(() => {
-            const rect = element.getBoundingClientRect();
-            notify({ width: rect.width, height: rect.height });
-          });
-        }
+      (function (global) {
+        const {
+          setupApp,
+          createControlsSection,
+          createButton,
+          createSlider,
+          createSelect,
+          observeElementSize,
+        } = global.MathWorldsUI;
+        const { createRenderController } = global.MathWorldsRendering;
 
         const state = {
           siteCount: 16,
@@ -306,6 +210,8 @@
           draggingIndex: null,
           hoverIndex: null,
           initialized: false,
+          renderMode: "euclidean",
+          wrapMode: "none",
         };
 
         const { controlStack, stageInner } = setupApp({
@@ -316,10 +222,17 @@
         const canvas = document.createElement("canvas");
         canvas.className = "render-surface";
         stageInner.appendChild(canvas);
-        const ctx = canvas.getContext("2d");
+
+        const renderController = createRenderController(canvas, {
+          background: "rgba(2, 6, 23, 0.94)",
+        });
+        renderController.setWrapMode(state.wrapMode);
+
+        const offscreenCanvas = document.createElement("canvas");
+        const offscreenCtx = offscreenCanvas.getContext("2d");
 
         function randomSites(count) {
-          const { width, height } = canvas;
+          const { width, height } = offscreenCanvas;
           const points = [];
           for (let i = 0; i < count; i += 1) {
             points.push({
@@ -335,7 +248,7 @@
         }
 
         function generateVoronoiCells(sites) {
-          const { width, height } = canvas;
+          const { width, height } = offscreenCanvas;
           const polygons = sites.map(() => [
             { x: 0, y: 0 },
             { x: width, y: 0 },
@@ -401,10 +314,22 @@
           return polygons;
         }
 
-        function draw() {
-          const { width, height } = canvas;
-          ctx.clearRect(0, 0, width, height);
-          if (!state.sites.length) return;
+        function drawScene(targetCtx, { width, height }) {
+          const pixelWidth = Math.max(1, Math.round(width));
+          const pixelHeight = Math.max(1, Math.round(height));
+
+          if (offscreenCanvas.width !== pixelWidth || offscreenCanvas.height !== pixelHeight) {
+            offscreenCanvas.width = pixelWidth;
+            offscreenCanvas.height = pixelHeight;
+          }
+
+          const ctx = offscreenCtx;
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, pixelWidth, pixelHeight);
+
+          if (!state.sites.length) {
+            return;
+          }
 
           const cells = generateVoronoiCells(state.sites);
           ctx.lineWidth = 2;
@@ -437,6 +362,24 @@
               ctx.stroke();
             }
           }
+
+          targetCtx.drawImage(
+            offscreenCanvas,
+            0,
+            0,
+            pixelWidth,
+            pixelHeight,
+            0,
+            0,
+            width,
+            height,
+          );
+        }
+
+        function draw() {
+          renderController.render((targetCtx, dimensions) => {
+            drawScene(targetCtx, dimensions);
+          });
         }
 
         function pickSite(x, y) {
@@ -451,27 +394,36 @@
           return null;
         }
 
+        function resetSites(count) {
+          state.sites = randomSites(count);
+          draw();
+        }
+
         canvas.addEventListener("pointerdown", (event) => {
-          const rect = canvas.getBoundingClientRect();
-          const x = event.clientX - rect.left;
-          const y = event.clientY - rect.top;
-          state.draggingIndex = pickSite(x, y);
-          if (state.draggingIndex !== null) {
+          const point = renderController.mapEventToScene(event);
+          if (!point) return;
+          const index = pickSite(point.x, point.y);
+          state.draggingIndex = index;
+          if (index !== null) {
             canvas.setPointerCapture(event.pointerId);
           }
         });
 
         canvas.addEventListener("pointermove", (event) => {
-          const rect = canvas.getBoundingClientRect();
-          const x = event.clientX - rect.left;
-          const y = event.clientY - rect.top;
+          const point = renderController.mapEventToScene(event);
+          if (!point) {
+            state.hoverIndex = null;
+            draw();
+            return;
+          }
+
           if (state.draggingIndex !== null) {
             const site = state.sites[state.draggingIndex];
-            site.x = clamp(x, 0, canvas.width);
-            site.y = clamp(y, 0, canvas.height);
+            site.x = clamp(point.x, 0, offscreenCanvas.width);
+            site.y = clamp(point.y, 0, offscreenCanvas.height);
             draw();
           } else {
-            state.hoverIndex = pickSite(x, y);
+            state.hoverIndex = pickSite(point.x, point.y);
             draw();
           }
         });
@@ -479,8 +431,8 @@
         canvas.addEventListener("pointerup", (event) => {
           if (state.draggingIndex !== null) {
             canvas.releasePointerCapture(event.pointerId);
-            state.draggingIndex = null;
           }
+          state.draggingIndex = null;
         });
 
         canvas.addEventListener("pointerleave", () => {
@@ -488,20 +440,6 @@
           state.hoverIndex = null;
           draw();
         });
-
-        function resizeCanvas(width, height) {
-          const w = Math.max(1, Math.floor(width));
-          const h = Math.max(1, Math.floor(height));
-          if (canvas.width !== w || canvas.height !== h) {
-            canvas.width = w;
-            canvas.height = h;
-          }
-        }
-
-        function resetSites(count) {
-          state.sites = randomSites(count);
-          draw();
-        }
 
         const configuration = createControlsSection(
           "Configuration",
@@ -540,29 +478,90 @@
         interaction.appendChild(buttonRow);
         controlStack.appendChild(interaction);
 
-        function handleResize(dimensions) {
-          const width = dimensions.width || stageInner.clientWidth || window.innerWidth - 320;
-          const height = dimensions.height || stageInner.clientHeight || window.innerHeight;
+        const renderingSection = createControlsSection(
+          "Rendering",
+          "Switch between Euclidean and spherical projections. Right-drag in spherical mode to rotate.",
+        );
+        const modeSelect = createSelect({
+          label: "Mode",
+          options: [
+            { value: "euclidean", label: "Euclidean" },
+            { value: "spherical", label: "Spherical" },
+          ],
+          value: state.renderMode,
+          onChange: (value) => {
+            state.renderMode = value;
+            renderController.setMode(value);
+            if (value === "spherical") {
+              renderController.setWrapMode("full");
+            } else {
+              renderController.setWrapMode(state.wrapMode);
+            }
+            syncRenderingControls();
+            draw();
+          },
+        });
+        const wrapSelect = createSelect({
+          label: "Euclidean Wrap",
+          options: [
+            { value: "none", label: "None" },
+            { value: "horizontal", label: "Left-Right" },
+            { value: "vertical", label: "Up-Down" },
+            { value: "full", label: "Full" },
+          ],
+          value: state.wrapMode,
+          onChange: (value) => {
+            state.wrapMode = value;
+            renderController.setWrapMode(value);
+            draw();
+          },
+        });
+        const resetRotationButton = createButton("Reset Rotation", () => {
+          renderController.resetRotation();
+          draw();
+        });
+        renderingSection.appendChild(modeSelect.wrapper);
+        renderingSection.appendChild(wrapSelect.wrapper);
+        renderingSection.appendChild(resetRotationButton);
+        controlStack.appendChild(renderingSection);
+
+        function syncRenderingControls() {
+          modeSelect.select.value = state.renderMode;
+          wrapSelect.select.value = state.wrapMode;
+          const disabled = state.renderMode === "spherical";
+          wrapSelect.select.disabled = disabled;
+          wrapSelect.wrapper.style.opacity = disabled ? "0.6" : "";
+        }
+
+        syncRenderingControls();
+
+        function handleResize({ width, height }) {
           if (!width || !height) {
             return;
           }
 
-          resizeCanvas(width, height);
+          renderController.resize(width, height);
+          draw();
 
           if (!state.initialized) {
             state.initialized = true;
             resetSites(state.siteCount);
-          } else {
-            draw();
           }
         }
 
-        observeElementSize(stageInner, handleResize);
+        observeElementSize(stageInner, (dimensions) => {
+          handleResize(dimensions);
+        });
+
+        renderController.onChange(() => {
+          draw();
+        });
 
         requestAnimationFrame(() => {
-          handleResize(stageInner.getBoundingClientRect());
+          const rect = stageInner.getBoundingClientRect();
+          handleResize({ width: rect.width, height: rect.height });
         });
-      })();
+      })(window);
     </script>
   </body>
 </html>

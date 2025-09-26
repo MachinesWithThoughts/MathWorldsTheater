@@ -154,122 +154,26 @@
   </head>
   <body>
     <div id="app"></div>
+    <script src="../../shared/ui.js"></script>
+    <script src="../../shared/rendering.js"></script>
     <script>
-      (function () {
-        function setupApp({ title, description }) {
-          const root = document.getElementById("app");
-          const controlsPanel = document.createElement("aside");
-          controlsPanel.className = "controls-panel";
-
-          const heading = document.createElement("h1");
-          heading.textContent = title;
-          controlsPanel.appendChild(heading);
-
-          if (description) {
-            const para = document.createElement("p");
-            para.className = "description";
-            para.textContent = description;
-            controlsPanel.appendChild(para);
-          }
-
-          const controlStack = document.createElement("div");
-          controlStack.className = "controls-grid";
-          controlsPanel.appendChild(controlStack);
-
-          const stage = document.createElement("section");
-          stage.className = "canvas-stage";
-          const stageInner = document.createElement("div");
-          stageInner.className = "stage-inner";
-          stage.appendChild(stageInner);
-
-          root.appendChild(controlsPanel);
-          root.appendChild(stage);
-
-          return { controlStack, stageInner };
-        }
-
-        function createControlsSection(title, note) {
-          const section = document.createElement("section");
-          section.className = "controls-section";
-          const heading = document.createElement("h2");
-          heading.textContent = title;
-          section.appendChild(heading);
-          if (note) {
-            const para = document.createElement("p");
-            para.className = "note";
-            para.textContent = note;
-            section.appendChild(para);
-          }
-          return section;
-        }
-
-        function createButton(label, onClick) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "control-button";
-          button.textContent = label;
-          button.addEventListener("click", onClick);
-          return button;
-        }
-
-        function createSlider({ label, min = 0, max = 1000, step = 1, value = 0, onChange }) {
-          const wrapper = document.createElement("label");
-          wrapper.className = "slider";
-          const title = document.createElement("span");
-          title.textContent = label;
-          const slider = document.createElement("input");
-          slider.type = "range";
-          slider.min = String(min);
-          slider.max = String(max);
-          slider.step = String(step);
-          slider.value = String(value);
-          const valueLabel = document.createElement("span");
-          valueLabel.className = "value";
-          valueLabel.textContent = String(value);
-          slider.addEventListener("input", (event) => {
-            const newValue = Number(event.target.value);
-            valueLabel.textContent = String(newValue);
-            if (onChange) onChange(newValue);
-          });
-          wrapper.appendChild(title);
-          wrapper.appendChild(slider);
-          wrapper.appendChild(valueLabel);
-          return { wrapper, slider, valueLabel };
-        }
-
-        function observeElementSize(element, callback) {
-          const notify = ({ width, height }) => {
-            if (width === 0 || height === 0) return;
-            callback({ width, height });
-          };
-
-          if (typeof ResizeObserver !== "undefined") {
-            const observer = new ResizeObserver((entries) => {
-              entries.forEach((entry) => {
-                const { width, height } = entry.contentRect;
-                notify({ width, height });
-              });
-            });
-            observer.observe(element);
-          } else {
-            window.addEventListener("resize", () => {
-              const rect = element.getBoundingClientRect();
-              notify({ width: rect.width, height: rect.height });
-            });
-          }
-
-          requestAnimationFrame(() => {
-            const rect = element.getBoundingClientRect();
-            notify({ width: rect.width, height: rect.height });
-          });
-        }
+      (function (global) {
+        const {
+          setupApp,
+          createControlsSection,
+          createButton,
+          createSlider,
+          createSelect,
+          createStatusPill,
+          observeElementSize,
+        } = global.MathWorldsUI;
+        const { createRenderController } = global.MathWorldsRendering;
 
         const params = {
           centerX: -0.5,
           centerY: 0,
           scale: 3,
           maxIterations: 200,
-          smoothing: true,
         };
 
         const state = {
@@ -279,7 +183,8 @@
           dragging: false,
           dragStart: null,
           dragEnd: null,
-          renderedImage: null,
+          renderMode: "euclidean",
+          wrapMode: "none",
         };
 
         const { controlStack, stageInner } = setupApp({
@@ -290,7 +195,14 @@
         const canvas = document.createElement("canvas");
         canvas.className = "render-surface";
         stageInner.appendChild(canvas);
-        const ctx = canvas.getContext("2d", { alpha: false });
+
+        const renderController = createRenderController(canvas, {
+          background: "rgba(2, 6, 23, 0.94)",
+        });
+        renderController.setWrapMode(state.wrapMode);
+
+        const offscreenCanvas = document.createElement("canvas");
+        const ctx = offscreenCanvas.getContext("2d", { alpha: false });
 
         function colorize(iteration, maxIterations) {
           if (iteration >= maxIterations) {
@@ -304,15 +216,16 @@
           return [r, g, b];
         }
 
-        function renderMandelbrot() {
-          const image = ctx.createImageData(state.width, state.height);
+        function renderMandelbrot(bufferWidth, bufferHeight) {
+          const image = ctx.createImageData(bufferWidth, bufferHeight);
           const data = image.data;
           const maxIterations = params.maxIterations;
 
-          for (let y = 0; y < state.height; y += 1) {
-            const cy = params.centerY + (y / state.height - 0.5) * params.scale;
-            for (let x = 0; x < state.width; x += 1) {
-              const cx = params.centerX + (x / state.width - 0.5) * params.scale * (state.width / state.height);
+          for (let y = 0; y < bufferHeight; y += 1) {
+            const cy = params.centerY + (y / bufferHeight - 0.5) * params.scale;
+            for (let x = 0; x < bufferWidth; x += 1) {
+              const cx = params.centerX +
+                (x / bufferWidth - 0.5) * params.scale * (bufferWidth / bufferHeight);
               let zx = 0;
               let zy = 0;
               let iteration = 0;
@@ -324,7 +237,7 @@
               }
 
               const [r, g, b] = colorize(iteration, maxIterations);
-              const index = (y * state.width + x) * 4;
+              const index = (y * bufferWidth + x) * 4;
               data[index] = r;
               data[index + 1] = g;
               data[index + 2] = b;
@@ -333,10 +246,6 @@
           }
 
           ctx.putImageData(image, 0, 0);
-          state.renderedImage = image;
-          if (state.boundingBox) {
-            drawBoundingBox(state.boundingBox.start, state.boundingBox.end);
-          }
         }
 
         function screenToComplex(point) {
@@ -361,52 +270,39 @@
             Math.abs(endComplex.x - startComplex.x),
             Math.abs(endComplex.y - startComplex.y) * (state.width / state.height),
           );
-          renderMandelbrot();
         }
 
-        function drawBoundingBox(start, end) {
+        function drawBoundingBox(targetCtx, start, end) {
           const minX = Math.min(start.x, end.x);
           const minY = Math.min(start.y, end.y);
           const maxX = Math.max(start.x, end.x);
           const maxY = Math.max(start.y, end.y);
 
-          ctx.save();
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
-          ctx.setLineDash([6, 4]);
-          ctx.lineWidth = 2;
-          ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
-          ctx.restore();
+          targetCtx.save();
+          targetCtx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+          targetCtx.setLineDash([6, 4]);
+          targetCtx.lineWidth = 2;
+          targetCtx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+          targetCtx.restore();
         }
 
         canvas.addEventListener("pointerdown", (event) => {
-          const rect = canvas.getBoundingClientRect();
-          const start = {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top,
-          };
+          const point = renderController.mapEventToScene(event);
+          if (!point) return;
+
           state.dragging = true;
-          state.dragStart = start;
-          state.dragEnd = start;
-          state.boundingBox = { start, end: start };
-          if (state.renderedImage) {
-            ctx.putImageData(state.renderedImage, 0, 0);
-          }
-          drawBoundingBox(start, start);
+          state.dragStart = point;
+          state.dragEnd = point;
+          state.boundingBox = { start: point, end: point };
         });
 
         canvas.addEventListener("pointermove", (event) => {
           if (!state.dragging) return;
-          const rect = canvas.getBoundingClientRect();
-          const current = {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top,
-          };
-          state.dragEnd = current;
-          state.boundingBox = { start: state.dragStart, end: current };
-          if (state.renderedImage) {
-            ctx.putImageData(state.renderedImage, 0, 0);
-          }
-          drawBoundingBox(state.dragStart, current);
+          const point = renderController.mapEventToScene(event);
+          if (!point) return;
+
+          state.dragEnd = point;
+          state.boundingBox = { start: state.dragStart, end: point };
         });
 
         canvas.addEventListener("pointerup", () => {
@@ -417,7 +313,7 @@
           state.dragStart = null;
           state.dragEnd = null;
           state.boundingBox = null;
-          renderMandelbrot();
+          requestRender();
         });
 
         canvas.addEventListener("pointerleave", () => {
@@ -426,32 +322,27 @@
             state.dragStart = null;
             state.dragEnd = null;
             state.boundingBox = null;
-            if (state.renderedImage) {
-              ctx.putImageData(state.renderedImage, 0, 0);
-            }
+            requestRender();
           }
         });
 
         canvas.addEventListener("wheel", (event) => {
           event.preventDefault();
-          const rect = canvas.getBoundingClientRect();
-          const pointer = {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top,
-          };
+          const point = renderController.mapEventToScene(event);
+          if (!point) return;
           const zoomFactor = event.deltaY < 0 ? 0.8 : 1.25;
-          const pointComplex = screenToComplex(pointer);
+          const pointComplex = screenToComplex(point);
           params.centerX = pointComplex.x + (params.centerX - pointComplex.x) * zoomFactor;
           params.centerY = pointComplex.y + (params.centerY - pointComplex.y) * zoomFactor;
           params.scale *= zoomFactor;
-          renderMandelbrot();
+          requestRender();
         }, { passive: false });
 
         function resetView() {
           params.centerX = -0.5;
           params.centerY = 0;
           params.scale = 3;
-          renderMandelbrot();
+          requestRender();
         }
 
         const viewControls = createControlsSection("View", "Modify iterations and reset the viewport.");
@@ -463,16 +354,72 @@
           value: params.maxIterations,
           onChange: (value) => {
             params.maxIterations = Number(value);
-            renderMandelbrot();
+            requestRender();
           },
         });
         viewControls.appendChild(iterationSlider.wrapper);
         viewControls.appendChild(createButton("Reset View", resetView));
         controlStack.appendChild(viewControls);
 
+        const renderingSection = createControlsSection(
+          "Rendering",
+          "Switch between Euclidean and spherical projections. Right-drag in spherical mode to rotate.",
+        );
+        const modeSelect = createSelect({
+          label: "Mode",
+          options: [
+            { value: "euclidean", label: "Euclidean" },
+            { value: "spherical", label: "Spherical" },
+          ],
+          value: state.renderMode,
+          onChange: (value) => {
+            state.renderMode = value;
+            renderController.setMode(value);
+            if (value === "spherical") {
+              renderController.setWrapMode("full");
+            } else {
+              renderController.setWrapMode(state.wrapMode);
+            }
+            syncRenderingControls();
+            requestRender();
+          },
+        });
+        const wrapSelect = createSelect({
+          label: "Euclidean Wrap",
+          options: [
+            { value: "none", label: "None" },
+            { value: "horizontal", label: "Left-Right" },
+            { value: "vertical", label: "Up-Down" },
+            { value: "full", label: "Full" },
+          ],
+          value: state.wrapMode,
+          onChange: (value) => {
+            state.wrapMode = value;
+            renderController.setWrapMode(value);
+            requestRender();
+          },
+        });
+        const resetRotationButton = createButton("Reset Rotation", () => {
+          renderController.resetRotation();
+          requestRender();
+        });
+        renderingSection.appendChild(modeSelect.wrapper);
+        renderingSection.appendChild(wrapSelect.wrapper);
+        renderingSection.appendChild(resetRotationButton);
+        controlStack.appendChild(renderingSection);
+
+        function syncRenderingControls() {
+          modeSelect.select.value = state.renderMode;
+          wrapSelect.select.value = state.wrapMode;
+          const disabled = state.renderMode === "spherical";
+          wrapSelect.select.disabled = disabled;
+          wrapSelect.wrapper.style.opacity = disabled ? "0.6" : "";
+        }
+
+        syncRenderingControls();
+
         const statusSection = createControlsSection("Status", "Current center and scale.");
-        const statusPill = document.createElement("span");
-        statusPill.className = "status-pill";
+        const statusPill = createStatusPill("");
         statusSection.appendChild(statusPill);
         controlStack.appendChild(statusSection);
 
@@ -480,17 +427,45 @@
           statusPill.textContent = `Center (${params.centerX.toFixed(4)}, ${params.centerY.toFixed(4)}) • Scale ${params.scale.toFixed(3)}`;
         }
 
+        let pendingRender = false;
+        function requestRender() {
+          if (pendingRender) return;
+          pendingRender = true;
+          requestAnimationFrame(() => {
+            pendingRender = false;
+            renderController.render((targetCtx, { width, height }) => {
+              const bufferWidth = Math.max(1, Math.round(width));
+              const bufferHeight = Math.max(1, Math.round(height));
+
+              if (offscreenCanvas.width !== bufferWidth || offscreenCanvas.height !== bufferHeight) {
+                offscreenCanvas.width = bufferWidth;
+                offscreenCanvas.height = bufferHeight;
+              }
+
+              state.width = bufferWidth;
+              state.height = bufferHeight;
+
+              renderMandelbrot(bufferWidth, bufferHeight);
+              targetCtx.drawImage(offscreenCanvas, 0, 0, bufferWidth, bufferHeight, 0, 0, width, height);
+
+              if (state.boundingBox) {
+                drawBoundingBox(targetCtx, state.boundingBox.start, state.boundingBox.end);
+              }
+            });
+            updateStatus();
+          });
+        }
+
         observeElementSize(stageInner, ({ width, height }) => {
-          state.width = Math.floor(width);
-          state.height = Math.floor(height);
-          canvas.width = state.width;
-          canvas.height = state.height;
-          renderMandelbrot();
-          updateStatus();
+          renderController.resize(width, height);
+          requestRender();
         });
 
         setInterval(updateStatus, 300);
-      })();
+        renderController.onChange(requestRender);
+
+        requestRender();
+      })(window);
     </script>
   </body>
 </html>

@@ -167,131 +167,20 @@
   </head>
   <body>
     <div id="app"></div>
+    <script src="../../shared/ui.js"></script>
+    <script src="../../shared/rendering.js"></script>
     <script>
-      (function () {
-        function setupApp({ title, description }) {
-          const root = document.getElementById("app");
-          const controlsPanel = document.createElement("aside");
-          controlsPanel.className = "controls-panel";
-
-          const heading = document.createElement("h1");
-          heading.textContent = title;
-          controlsPanel.appendChild(heading);
-
-          if (description) {
-            const para = document.createElement("p");
-            para.className = "description";
-            para.textContent = description;
-            controlsPanel.appendChild(para);
-          }
-
-          const controlStack = document.createElement("div");
-          controlStack.className = "controls-grid";
-          controlsPanel.appendChild(controlStack);
-
-          const stage = document.createElement("section");
-          stage.className = "canvas-stage";
-          const stageInner = document.createElement("div");
-          stageInner.className = "stage-inner";
-          stage.appendChild(stageInner);
-
-          root.appendChild(controlsPanel);
-          root.appendChild(stage);
-
-          return { controlStack, stageInner };
-        }
-
-        function createControlsSection(title, note) {
-          const section = document.createElement("section");
-          section.className = "controls-section";
-          const heading = document.createElement("h2");
-          heading.textContent = title;
-          section.appendChild(heading);
-          if (note) {
-            const para = document.createElement("p");
-            para.className = "note";
-            para.textContent = note;
-            section.appendChild(para);
-          }
-          return section;
-        }
-
-        function createButton(label, onClick) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "control-button";
-          button.textContent = label;
-          button.addEventListener("click", onClick);
-          return button;
-        }
-
-        function createSlider({ label, min = 0, max = 100, step = 1, value = 0, onChange }) {
-          const wrapper = document.createElement("label");
-          wrapper.className = "slider";
-          const title = document.createElement("span");
-          title.textContent = label;
-          const slider = document.createElement("input");
-          slider.type = "range";
-          slider.min = String(min);
-          slider.max = String(max);
-          slider.step = String(step);
-          slider.value = String(value);
-          const valueLabel = document.createElement("span");
-          valueLabel.className = "value";
-          valueLabel.textContent = String(value);
-          slider.addEventListener("input", (event) => {
-            const newValue = Number(event.target.value);
-            valueLabel.textContent = String(newValue);
-            if (onChange) onChange(newValue);
-          });
-          wrapper.appendChild(title);
-          wrapper.appendChild(slider);
-          wrapper.appendChild(valueLabel);
-          return { wrapper, slider, valueLabel };
-        }
-
-        function createTextarea({ label, value = "", onChange }) {
-          const wrapper = document.createElement("label");
-          wrapper.className = "slider";
-          const title = document.createElement("span");
-          title.textContent = label;
-          const textarea = document.createElement("textarea");
-          textarea.className = "control-textarea";
-          textarea.value = value;
-          textarea.addEventListener("input", (event) => {
-            if (onChange) onChange(event.target.value);
-          });
-          wrapper.appendChild(title);
-          wrapper.appendChild(textarea);
-          return { wrapper, textarea };
-        }
-
-        function observeElementSize(element, callback) {
-          const notify = ({ width, height }) => {
-            if (width === 0 || height === 0) return;
-            callback({ width, height });
-          };
-
-          if (typeof ResizeObserver !== "undefined") {
-            const observer = new ResizeObserver((entries) => {
-              entries.forEach((entry) => {
-                const { width, height } = entry.contentRect;
-                notify({ width, height });
-              });
-            });
-            observer.observe(element);
-          } else {
-            window.addEventListener("resize", () => {
-              const rect = element.getBoundingClientRect();
-              notify({ width: rect.width, height: rect.height });
-            });
-          }
-
-          requestAnimationFrame(() => {
-            const rect = element.getBoundingClientRect();
-            notify({ width: rect.width, height: rect.height });
-          });
-        }
+      (function (global) {
+        const {
+          setupApp,
+          createControlsSection,
+          createButton,
+          createSlider,
+          createTextarea,
+          createSelect,
+          observeElementSize,
+        } = global.MathWorldsUI;
+        const { createRenderController } = global.MathWorldsRendering;
 
         const presets = {
           Koch: {
@@ -324,6 +213,8 @@
           iterations: presets.Koch.iterations,
           segmentLength: presets.Koch.length,
           path: [],
+          renderMode: "euclidean",
+          wrapMode: "none",
         };
 
         const { controlStack, stageInner } = setupApp({
@@ -334,7 +225,14 @@
         const canvas = document.createElement("canvas");
         canvas.className = "render-surface";
         stageInner.appendChild(canvas);
-        const ctx = canvas.getContext("2d");
+
+        const renderController = createRenderController(canvas, {
+          background: "rgba(2, 6, 23, 0.94)",
+        });
+        renderController.setWrapMode(state.wrapMode);
+
+        const offscreenCanvas = document.createElement("canvas");
+        const ctx = offscreenCanvas.getContext("2d");
 
         function parseRules(text) {
           const lines = text
@@ -411,16 +309,28 @@
           state.path = vertices;
         }
 
-        function draw() {
-          const { width, height } = canvas;
-          ctx.fillStyle = "rgba(2, 6, 23, 0.94)";
-          ctx.fillRect(0, 0, width, height);
+        function drawScene(targetCtx, { width, height }) {
+          const pixelWidth = Math.max(1, Math.round(width));
+          const pixelHeight = Math.max(1, Math.round(height));
+
+          if (offscreenCanvas.width !== pixelWidth || offscreenCanvas.height !== pixelHeight) {
+            offscreenCanvas.width = pixelWidth;
+            offscreenCanvas.height = pixelHeight;
+          }
+
+          const ctx2d = ctx;
+          ctx2d.setTransform(1, 0, 0, 1, 0, 0);
+          ctx2d.fillStyle = "rgba(2, 6, 23, 0.94)";
+          ctx2d.fillRect(0, 0, pixelWidth, pixelHeight);
 
           if (!state.path.length) {
             renderPath();
           }
 
-          if (!state.path.length) return;
+          if (!state.path.length) {
+            targetCtx.drawImage(offscreenCanvas, 0, 0, width, height);
+            return;
+          }
 
           let minX = Infinity;
           let minY = Infinity;
@@ -440,36 +350,54 @@
           const pathHeight = maxY - minY || 1;
 
           const scale = Math.min(
-            (width - padding * 2) / pathWidth,
-            (height - padding * 2) / pathHeight,
+            (pixelWidth - padding * 2) / pathWidth,
+            (pixelHeight - padding * 2) / pathHeight,
           );
 
-          const offsetX = (width - pathWidth * scale) / 2 - minX * scale;
-          const offsetY = (height - pathHeight * scale) / 2 - minY * scale;
+          const offsetX = (pixelWidth - pathWidth * scale) / 2 - minX * scale;
+          const offsetY = (pixelHeight - pathHeight * scale) / 2 - minY * scale;
 
-          ctx.strokeStyle = "rgba(56, 189, 248, 0.85)";
-          ctx.lineWidth = 2;
-          ctx.lineJoin = "round";
-          ctx.lineCap = "round";
+          ctx2d.strokeStyle = "rgba(56, 189, 248, 0.85)";
+          ctx2d.lineWidth = 2;
+          ctx2d.lineJoin = "round";
+          ctx2d.lineCap = "round";
 
-          ctx.beginPath();
+          ctx2d.beginPath();
           let first = true;
           state.path.forEach((point) => {
             if (point.move) {
-              ctx.moveTo(point.x * scale + offsetX, point.y * scale + offsetY);
+              ctx2d.moveTo(point.x * scale + offsetX, point.y * scale + offsetY);
               first = true;
             } else {
               const x = point.x * scale + offsetX;
               const y = point.y * scale + offsetY;
               if (first) {
-                ctx.moveTo(x, y);
+                ctx2d.moveTo(x, y);
                 first = false;
               } else {
-                ctx.lineTo(x, y);
+                ctx2d.lineTo(x, y);
               }
             }
           });
-          ctx.stroke();
+          ctx2d.stroke();
+
+          targetCtx.drawImage(
+            offscreenCanvas,
+            0,
+            0,
+            pixelWidth,
+            pixelHeight,
+            0,
+            0,
+            width,
+            height,
+          );
+        }
+
+        function draw() {
+          renderController.render((targetCtx, dimensions) => {
+            drawScene(targetCtx, dimensions);
+          });
         }
 
         function updatePath() {
@@ -561,15 +489,73 @@
         presetsSection.appendChild(buttonRow);
         controlStack.appendChild(presetsSection);
 
+        const renderingSection = createControlsSection(
+          "Rendering",
+          "Switch between Euclidean and spherical projections. Right-drag in spherical mode to rotate.",
+        );
+        const modeSelect = createSelect({
+          label: "Mode",
+          options: [
+            { value: "euclidean", label: "Euclidean" },
+            { value: "spherical", label: "Spherical" },
+          ],
+          value: state.renderMode,
+          onChange: (value) => {
+            state.renderMode = value;
+            renderController.setMode(value);
+            if (value === "spherical") {
+              renderController.setWrapMode("full");
+            } else {
+              renderController.setWrapMode(state.wrapMode);
+            }
+            syncRenderingControls();
+            draw();
+          },
+        });
+        const wrapSelect = createSelect({
+          label: "Euclidean Wrap",
+          options: [
+            { value: "none", label: "None" },
+            { value: "horizontal", label: "Left-Right" },
+            { value: "vertical", label: "Up-Down" },
+            { value: "full", label: "Full" },
+          ],
+          value: state.wrapMode,
+          onChange: (value) => {
+            state.wrapMode = value;
+            renderController.setWrapMode(value);
+            draw();
+          },
+        });
+        const resetRotationButton = createButton("Reset Rotation", () => {
+          renderController.resetRotation();
+          draw();
+        });
+        renderingSection.appendChild(modeSelect.wrapper);
+        renderingSection.appendChild(wrapSelect.wrapper);
+        renderingSection.appendChild(resetRotationButton);
+        controlStack.appendChild(renderingSection);
+
+        function syncRenderingControls() {
+          modeSelect.select.value = state.renderMode;
+          wrapSelect.select.value = state.wrapMode;
+          const disabled = state.renderMode === "spherical";
+          wrapSelect.select.disabled = disabled;
+          wrapSelect.wrapper.style.opacity = disabled ? "0.6" : "";
+        }
+
+        syncRenderingControls();
+
         observeElementSize(stageInner, ({ width, height }) => {
-          canvas.width = width;
-          canvas.height = height;
+          renderController.resize(width, height);
           draw();
         });
 
         renderPath();
         draw();
-      })();
+
+        renderController.onChange(draw);
+      })(window);
     </script>
   </body>
 </html>
