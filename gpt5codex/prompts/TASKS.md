@@ -23,14 +23,14 @@ Generate a series of experimental standalone one-pager apps:
 
 
 # v00.00.02 - Advanced Rendering Features
-1. [R] Add an dropdown to switch between Euclidean and Spherical renderings.
-  - [R] Right dragging will rotate the Sphere.
-  - [R] Add a Euclidean Left-Right, Up-Down, Full Wraparound options
-2. [R] Update
-  - [R] game-of-life-explorer.
-  - [R] lindenmeyer-explorer.
-  - [R] mandelbrot-explorer.
-  - [R] voronoi-explorer.
+1. [I] Add an dropdown to switch between Euclidean and Spherical renderings. (**COMPLETED**: 20250926-153000)
+  - [I] Right dragging will rotate the Sphere. (**COMPLETED**: 20250926-153000)
+  - [I] Add a Euclidean Left-Right, Up-Down, Full Wraparound options (**COMPLETED**: 20250926-153000)
+2. [I] Update
+  - [I] game-of-life-explorer. (**COMPLETED**: 20250926-153000)
+  - [I] lindenmeyer-explorer. (**COMPLETED**: 20250926-153000)
+  - [I] mandelbrot-explorer. (**COMPLETED**: 20250926-153000)
+  - [I] voronoi-explorer. (**COMPLETED**: 20250926-153000)
 
 ## v00.00.01 implementation
 
@@ -46,3 +46,4 @@ Generate a series of experimental standalone one-pager apps:
 - Design and build shared UI/state components for selecting rendering modes, including the dropdown, rotation handling, and wraparound options.
 - Integrate the new rendering mode support into `game-of-life-explorer`, `lindenmeyer-explorer`, `mandelbrot-explorer`, and `voronoi-explorer`.
 - Update `README.md`, run verification in `tests/`, and record task completions with timestamps once confirmed.
+- Provide a central landing page at `apps/index.html` linking to each explorer for local browsing.

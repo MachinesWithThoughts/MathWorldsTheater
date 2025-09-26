@@ -1,5 +1,4 @@
 :root {
-:root {
   color-scheme: dark;
   --bg-gradient-start: #0f172a;
   --bg-gradient-end: #020617;
@@ -199,6 +198,38 @@ textarea.control-textarea {
   font-family: "JetBrains Mono", "SFMono-Regular", "Menlo", monospace;
   font-size: 13px;
   line-height: 1.45;
+}
+
+label.select-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+label.select-control span {
+  color: var(--text-primary);
+}
+
+select.control-select {
+  appearance: none;
+  background: rgba(3, 7, 18, 0.4);
+  border: 1px solid var(--control-border);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+select.control-select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+select.control-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .status-pill {
