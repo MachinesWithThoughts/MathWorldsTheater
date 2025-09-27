@@ -19,6 +19,9 @@
         --control-border: rgba(148, 163, 184, 0.2);
         --control-hover: rgba(148, 163, 184, 0.25);
         --shadow-soft: 0 6px 18px rgba(15, 23, 42, 0.35);
+        --age-color-young: #38bdf8;
+        --age-color-old: #f97316;
+        --panel-highlight: rgba(148, 163, 184, 0.45);
       }
 
       html,
@@ -84,6 +87,70 @@
         border: 1px solid var(--control-border);
         border-radius: 12px;
         box-shadow: var(--shadow-soft);
+        position: relative;
+        transition: border-color 160ms ease, background 160ms ease;
+      }
+
+      .controls-section.collapsed {
+        border-color: rgba(148, 163, 184, 0.1);
+        background: rgba(9, 14, 23, 0.7);
+      }
+
+      .section-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: transparent;
+        border: none;
+        color: inherit;
+        padding: 0;
+        font: inherit;
+        cursor: pointer;
+        text-align: left;
+      }
+
+      .section-toggle:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .section-toggle-icon {
+        flex-shrink: 0;
+        width: 18px;
+        height: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.2);
+        color: var(--accent);
+        font-size: 12px;
+        transition: transform 160ms ease;
+      }
+
+      .controls-section.collapsed .section-toggle-icon {
+        transform: rotate(-90deg);
+      }
+
+      .section-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        overflow: hidden;
+        transition: max-height 200ms ease, opacity 200ms ease, visibility 200ms ease;
+      }
+
+      .controls-section.collapsed .section-content {
+        max-height: 0;
+        opacity: 0;
+        visibility: hidden;
       }
 
       .controls-section h2 {
@@ -222,6 +289,181 @@
         height: 100%;
         background: transparent;
       }
+
+      .cell-history-panel {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        width: min(320px, 40vw);
+        max-height: calc(100% - 48px);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+        background: rgba(8, 14, 26, 0.92);
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        box-shadow: 0 18px 40px rgba(2, 6, 23, 0.55);
+        backdrop-filter: blur(16px);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(12px);
+        transition: opacity 180ms ease, transform 180ms ease;
+        overflow: hidden;
+      }
+
+      .cell-history-panel[data-visible="true"] {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(0);
+      }
+
+      .cell-history-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .cell-history-header h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .cell-history-close {
+        appearance: none;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(15, 23, 42, 0.6);
+        color: var(--text-primary);
+        border-radius: 999px;
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        line-height: 1;
+        cursor: pointer;
+        transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+      }
+
+      .cell-history-close:hover {
+        background: rgba(56, 189, 248, 0.22);
+        border-color: var(--accent);
+      }
+
+      .cell-history-summary {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        padding: 12px;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+      }
+
+      .cell-history-summary span {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .cell-history-summary strong {
+        display: block;
+        font-size: 14px;
+        color: var(--text-primary);
+      }
+
+      .cell-history-timeline {
+        flex: 1;
+        overflow-y: auto;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.15);
+        background: rgba(10, 15, 25, 0.6);
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .timeline-entry {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        background: rgba(17, 24, 39, 0.55);
+      }
+
+      .timeline-entry[data-state="alive"] {
+        border-color: rgba(56, 189, 248, 0.4);
+        background: rgba(56, 189, 248, 0.12);
+        color: var(--text-primary);
+      }
+
+      .timeline-entry[data-state="dead"] {
+        color: var(--text-muted);
+      }
+
+      .timeline-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .timeline-age-swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 4px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        background: rgba(148, 163, 184, 0.15);
+      }
+
+      .timeline-age-swatch[data-state="alive"] {
+        border-color: rgba(56, 189, 248, 0.6);
+      }
+
+      .cell-age-legend {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .cell-age-gradient {
+        position: relative;
+        height: 10px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--age-color-young), var(--age-color-old));
+        border: 1px solid rgba(148, 163, 184, 0.25);
+      }
+
+      .cell-age-legend span {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .grid-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        font-size: 12px;
+        color: var(--text-muted);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+        background: rgba(15, 23, 42, 0.45);
+        border-radius: 10px;
+        padding: 8px 10px;
+      }
+
+      .grid-stats span {
+        white-space: nowrap;
+      }
+
+      .timeline-empty {
+        font-size: 12px;
+        color: var(--text-muted);
+        text-align: center;
+        padding: 12px 0;
+      }
     </style>
   </head>
   <body>
@@ -243,6 +485,10 @@
         const config = {
           columns: 64,
           rows: 48,
+          cellSize: 14,
+          minCellSize: 6,
+          maxCellSize: 32,
+          ageColorMax: 18,
           running: false,
           speed: 6,
           renderMode: "euclidean",
@@ -255,6 +501,7 @@
 
         const state = {
           grid: new Set(),
+          cellRecords: new Map(),
           generation: 0,
           timer: null,
           dragMode: null,
@@ -263,7 +510,28 @@
             siteCount: 24,
             normalizedSites: [],
           },
+          selectedCellKey: null,
+          ageColorCache: new Map(),
+          theme: {
+            ageYoung: { r: 56, g: 189, b: 248 },
+            ageOld: { r: 249, g: 115, b: 22 },
+            highlight: "rgba(148, 163, 184, 0.45)",
+          },
         };
+
+        const gridLimits = {
+          minColumns: 8,
+          maxColumns: 256,
+          minRows: 8,
+          maxRows: 256,
+        };
+
+        const MAX_HISTORY_RENDER = 200;
+
+        let historyPanel;
+        let historyTitle;
+        let historySummary;
+        let historyTimeline;
 
         const { controlStack, stageInner } = setupApp({
           title: "Game of Life Explorer",
@@ -272,7 +540,49 @@
 
         const canvas = document.createElement("canvas");
         canvas.className = "render-surface";
-        stageInner.appendChild(canvas);
+          stageInner.appendChild(canvas);
+
+        historyPanel = document.createElement("aside");
+        historyPanel.className = "cell-history-panel";
+        historyPanel.dataset.visible = "false";
+
+        const historyHeader = document.createElement("div");
+        historyHeader.className = "cell-history-header";
+        historyTitle = document.createElement("h3");
+        historyTitle.textContent = "Cell History";
+        const closeButton = document.createElement("button");
+        closeButton.className = "cell-history-close";
+        closeButton.type = "button";
+        closeButton.setAttribute("aria-label", "Close cell history");
+        closeButton.textContent = "✕";
+        closeButton.addEventListener("click", () => {
+          state.selectedCellKey = null;
+          updateHistoryPanel();
+          draw();
+        });
+        historyHeader.appendChild(historyTitle);
+        historyHeader.appendChild(closeButton);
+
+        historySummary = document.createElement("div");
+        historySummary.className = "cell-history-summary";
+
+        historyTimeline = document.createElement("div");
+        historyTimeline.className = "cell-history-timeline";
+
+        const legend = document.createElement("div");
+        legend.className = "cell-age-legend";
+        const gradient = document.createElement("div");
+        gradient.className = "cell-age-gradient";
+        const legendLabel = document.createElement("span");
+        legendLabel.textContent = "Young → Old";
+        legend.appendChild(gradient);
+        legend.appendChild(legendLabel);
+
+        historyPanel.appendChild(historyHeader);
+        historyPanel.appendChild(historySummary);
+        historyPanel.appendChild(historyTimeline);
+        historyPanel.appendChild(legend);
+        stageInner.appendChild(historyPanel);
 
         const renderController = createRenderController(canvas, {
           background: "rgba(15, 23, 42, 0.95)",
@@ -284,6 +594,59 @@
 
         function keyFor(x, y) {
           return `${x},${y}`;
+        }
+
+        function parseKey(key) {
+          const [x, y] = key.split(",").map(Number);
+          return { x, y };
+        }
+
+        function updateGridDimensions() {
+          const controllerState = renderController.getState();
+          const width = controllerState.cssWidth;
+          const height = controllerState.cssHeight;
+          if (!width || !height) {
+            return;
+          }
+
+          const columns = clamp(Math.floor(width / config.cellSize), gridLimits.minColumns, gridLimits.maxColumns);
+          const rows = clamp(Math.floor(height / config.cellSize), gridLimits.minRows, gridLimits.maxRows);
+
+          if (columns === config.columns && rows === config.rows) {
+            return;
+          }
+
+          const newGrid = new Set();
+          const newRecords = new Map();
+
+          state.grid.forEach((key) => {
+            const { x, y } = parseKey(key);
+            if (x < columns && y < rows) {
+              newGrid.add(keyFor(x, y));
+            }
+          });
+
+          state.cellRecords.forEach((record, key) => {
+            const { x, y } = parseKey(key);
+            if (x < columns && y < rows) {
+              newRecords.set(keyFor(x, y), record);
+            }
+          });
+
+          config.columns = columns;
+          config.rows = rows;
+          state.grid = newGrid;
+          state.cellRecords = newRecords;
+
+          if (state.selectedCellKey) {
+            const { x, y } = parseKey(state.selectedCellKey);
+            if (x >= columns || y >= rows) {
+              state.selectedCellKey = null;
+            }
+          }
+
+          updateHistoryPanel();
+          draw();
         }
 
         function getWrapFlags() {
@@ -341,6 +704,87 @@
           return count;
         }
 
+        function getCellRecord(key) {
+          if (!state.cellRecords.has(key)) {
+            state.cellRecords.set(key, {
+              age: 0,
+              history: [],
+              lastAliveGeneration: null,
+              longestStreak: 0,
+              currentStreak: 0,
+              toggles: 0,
+              lastState: "dead",
+            });
+          }
+          return state.cellRecords.get(key);
+        }
+
+        function recordCellState(key, alive, generation = state.generation) {
+          const record = getCellRecord(key);
+          const stateValue = alive ? "alive" : "dead";
+          const previousState = record.lastState ?? "dead";
+
+          if (previousState !== stateValue) {
+            record.toggles += 1;
+          }
+
+          if (stateValue === "alive") {
+            record.age = previousState === "alive" ? record.age + 1 : 1;
+            record.currentStreak = previousState === "alive" ? record.currentStreak + 1 : 1;
+            record.longestStreak = Math.max(record.longestStreak, record.currentStreak);
+            record.lastAliveGeneration = generation;
+          } else {
+            record.age = 0;
+            record.currentStreak = 0;
+          }
+
+          record.lastState = stateValue;
+
+          const lastEntry = record.history[record.history.length - 1];
+          if (!lastEntry || lastEntry.generation !== generation) {
+            record.history.push({ generation, state: stateValue });
+            if (record.history.length > MAX_HISTORY_RENDER) {
+              record.history.shift();
+            }
+          } else {
+            lastEntry.state = stateValue;
+          }
+
+          return record;
+        }
+
+        function applyCellState(x, y, alive, generation = state.generation) {
+          if (x < 0 || y < 0 || x >= config.columns || y >= config.rows) {
+            return false;
+          }
+          const key = keyFor(x, y);
+          const currentlyAlive = state.grid.has(key);
+          if (currentlyAlive === alive) {
+            return false;
+          }
+          if (alive) {
+            state.grid.add(key);
+          } else {
+            state.grid.delete(key);
+          }
+          recordCellState(key, alive, generation);
+          return true;
+        }
+
+        function getAgeColor(age) {
+          if (state.ageColorCache.has(age)) {
+            return state.ageColorCache.get(age);
+          }
+          const clampedAge = Math.min(age, config.ageColorMax);
+          const t = clampedAge / config.ageColorMax;
+          const r = Math.round(lerp(state.theme.ageYoung.r, state.theme.ageOld.r, t));
+          const g = Math.round(lerp(state.theme.ageYoung.g, state.theme.ageOld.g, t));
+          const b = Math.round(lerp(state.theme.ageYoung.b, state.theme.ageOld.b, t));
+          const color = `rgb(${r}, ${g}, ${b})`;
+          state.ageColorCache.set(age, color);
+          return color;
+        }
+
         function drawScene(targetCtx, { width, height }) {
           const pixelWidth = Math.max(1, Math.round(width));
           const pixelHeight = Math.max(1, Math.round(height));
@@ -380,13 +824,25 @@
           const drawWidth = Math.max(0, cellWidth - paddingX * 2);
           const drawHeight = Math.max(0, cellHeight - paddingY * 2);
 
-          ctx.fillStyle = "#38bdf8";
           state.grid.forEach((key) => {
             const [cx, cy] = key.split(",").map(Number);
+            const record = getCellRecord(key);
             const left = cx * cellWidth + paddingX;
             const top = cy * cellHeight + paddingY;
+            ctx.fillStyle = getAgeColor(record.age);
             ctx.fillRect(left, top, drawWidth, drawHeight);
           });
+
+          if (state.selectedCellKey) {
+            const { x: selectedX, y: selectedY } = parseKey(state.selectedCellKey);
+            if (selectedX >= 0 && selectedX < config.columns && selectedY >= 0 && selectedY < config.rows) {
+              const left = selectedX * cellWidth + paddingX;
+              const top = selectedY * cellHeight + paddingY;
+              ctx.strokeStyle = state.theme.highlight;
+              ctx.lineWidth = Math.max(2, Math.min(drawWidth, drawHeight) * 0.12);
+              ctx.strokeRect(left + 1, top + 1, Math.max(0, drawWidth - 2), Math.max(0, drawHeight - 2));
+            }
+          }
 
           ctx.fillStyle = "rgba(148, 163, 184, 0.65)";
           ctx.font = "14px 'JetBrains Mono', monospace";
@@ -493,21 +949,102 @@
           });
         }
 
+        function updateHistoryPanel() {
+          if (!state.selectedCellKey) {
+            historyPanel.dataset.visible = "false";
+            historyTitle.textContent = "Cell History";
+            historySummary.innerHTML = "";
+            historyTimeline.innerHTML = "";
+            return;
+          }
+
+          const record = getCellRecord(state.selectedCellKey);
+          const { x, y } = parseKey(state.selectedCellKey);
+          historyTitle.textContent = `Cell (${x}, ${y})`;
+          historySummary.innerHTML = "";
+
+          const summaryItems = [
+            { label: "Age", value: record.age },
+            { label: "State Toggles", value: record.toggles },
+            { label: "Alive Streak", value: record.longestStreak },
+            { label: "Last Alive", value: record.lastAliveGeneration ?? "—" },
+          ];
+
+          summaryItems.forEach((item) => {
+            const wrapper = document.createElement("span");
+            wrapper.innerHTML = `<strong>${item.label}</strong>${item.value}`;
+            historySummary.appendChild(wrapper);
+          });
+
+          historyTimeline.innerHTML = "";
+          if (record.history.length === 0) {
+            const empty = document.createElement("div");
+            empty.className = "timeline-empty";
+            empty.textContent = "No history yet. Run the simulation to build timeline.";
+            historyTimeline.appendChild(empty);
+          } else {
+            record.history.forEach((entry) => {
+              const timelineEntry = document.createElement("div");
+              timelineEntry.className = "timeline-entry";
+              timelineEntry.dataset.state = entry.state;
+              const meta = document.createElement("span");
+              meta.className = "timeline-meta";
+              const swatch = document.createElement("span");
+              swatch.className = "timeline-age-swatch";
+              swatch.dataset.state = entry.state;
+              if (entry.state === "alive") {
+                swatch.style.background = getAgeColor(record.age);
+              }
+              const stateLabel = document.createElement("span");
+              stateLabel.textContent = entry.state === "alive" ? "Alive" : "Dead";
+              meta.appendChild(swatch);
+              meta.appendChild(stateLabel);
+
+              const generationLabel = document.createElement("span");
+              generationLabel.textContent = `Generation ${entry.generation}`;
+
+              timelineEntry.appendChild(generationLabel);
+              timelineEntry.appendChild(meta);
+              historyTimeline.appendChild(timelineEntry);
+            });
+          }
+
+          historyPanel.dataset.visible = "true";
+        }
+
         function step() {
           const next = new Set();
+          const nextRecords = new Map();
+          const generation = state.generation + 1;
+          const pendingRecords = new Map();
           for (let x = 0; x < config.columns; x += 1) {
             for (let y = 0; y < config.rows; y += 1) {
               const alive = state.grid.has(keyFor(x, y));
               const count = neighbors(x, y);
               if (alive && config.rules.survival.includes(count)) {
-                next.add(keyFor(x, y));
+                const key = keyFor(x, y);
+                next.add(key);
+                const record = recordCellState(key, true, generation);
+                pendingRecords.set(key, record);
               } else if (!alive && config.rules.birth.includes(count)) {
-                next.add(keyFor(x, y));
+                const key = keyFor(x, y);
+                next.add(key);
+                const record = recordCellState(key, true, generation);
+                pendingRecords.set(key, record);
+              } else if (alive) {
+                const key = keyFor(x, y);
+                const record = recordCellState(key, false, generation);
+                pendingRecords.set(key, record);
               }
             }
           }
           state.grid = next;
-          state.generation += 1;
+          pendingRecords.forEach((record, key) => {
+            state.cellRecords.set(key, record);
+            nextRecords.set(key, record);
+          });
+          state.generation = generation;
+          updateHistoryPanel();
           draw();
         }
 
@@ -582,6 +1119,10 @@
 
         function clamp(value, min, max) {
           return Math.max(min, Math.min(max, value));
+        }
+
+        function lerp(a, b, t) {
+          return a + (b - a) * t;
         }
 
         function toSceneCoordinates(site) {
@@ -801,10 +1342,8 @@
 
         let playPauseButton;
 
-        const simulationControls = createControlsSection(
-          "Simulation",
-          "Play, pause, or step through generations.",
-        );
+        const simulationControlsSection = createControlsSection("Simulation", "Play, pause, or step through generations.");
+        const simulationControls = simulationControlsSection.element;
         const buttonRow = document.createElement("div");
         buttonRow.className = "button-row";
         playPauseButton = createButton("Play", toggleRunning);
@@ -817,7 +1356,7 @@
         buttonRow.appendChild(playPauseButton);
         buttonRow.appendChild(stepButton);
         buttonRow.appendChild(clearButton);
-        simulationControls.appendChild(buttonRow);
+        simulationControlsSection.appendChild(buttonRow);
 
         const speedSlider = createSlider({
           label: "Speed",
@@ -828,13 +1367,25 @@
             config.speed = Number(value);
           },
         });
-        simulationControls.appendChild(speedSlider.wrapper);
+        simulationControlsSection.appendChild(speedSlider.wrapper);
+        const cellSizeSlider = createSlider({
+          label: "Cell Size",
+          min: config.minCellSize,
+          max: config.maxCellSize,
+          value: config.cellSize,
+          onChange: (value) => {
+            config.cellSize = Number(value);
+            updateGridDimensions();
+          },
+        });
+        simulationControlsSection.appendChild(cellSizeSlider.wrapper);
         controlStack.appendChild(simulationControls);
 
-        const renderingSection = createControlsSection(
+        const renderingSectionWrapper = createControlsSection(
           "Rendering",
           "Switch between Euclidean and spherical projections. Right-drag in spherical mode to rotate.",
         );
+        const renderingSection = renderingSectionWrapper.element;
         const wrapSelect = createSelect({
           label: "Euclidean Wraparound",
           options: [
@@ -873,9 +1424,9 @@
           renderController.resetRotation();
           draw();
         });
-        renderingSection.appendChild(modeSelect.wrapper);
-        renderingSection.appendChild(wrapSelect.wrapper);
-        renderingSection.appendChild(resetRotationButton);
+        renderingSectionWrapper.appendChild(modeSelect.wrapper);
+        renderingSectionWrapper.appendChild(wrapSelect.wrapper);
+        renderingSectionWrapper.appendChild(resetRotationButton);
         controlStack.appendChild(renderingSection);
 
         function syncRenderingControls() {
@@ -888,10 +1439,8 @@
 
         syncRenderingControls();
 
-        const overlaySection = createControlsSection(
-          "World Overlay",
-          "Blend Voronoi cells or Delaunay triangles over the automaton grid.",
-        );
+        const overlaySectionWrapper = createControlsSection("World Overlay", "Blend Voronoi cells or Delaunay triangles over the automaton grid.");
+        const overlaySection = overlaySectionWrapper.element;
         const overlayModeSelect = createSelect({
           label: "Overlay Mode",
           options: [
@@ -939,15 +1488,16 @@
           draw();
         }));
 
-        overlaySection.appendChild(overlayModeSelect.wrapper);
-        overlaySection.appendChild(overlaySiteSlider.wrapper);
-        overlaySection.appendChild(overlayButtons);
+        overlaySectionWrapper.appendChild(overlayModeSelect.wrapper);
+        overlaySectionWrapper.appendChild(overlaySiteSlider.wrapper);
+        overlaySectionWrapper.appendChild(overlayButtons);
         controlStack.appendChild(overlaySection);
 
-        const ruleSection = createControlsSection(
+        const ruleSectionWrapper = createControlsSection(
           "Rules",
           "Adjust Life-like rule sets; copy or reset to default.",
         );
+        const ruleSection = ruleSectionWrapper.element;
 
         const ruleMatrix = document.createElement("div");
         ruleMatrix.className = "rule-matrix-wrapper";
@@ -1039,17 +1589,18 @@
         );
 
         renderRuleMatrix();
-        ruleSection.appendChild(ruleMatrix);
-        ruleSection.appendChild(ruleString);
-        ruleSection.appendChild(ruleActions);
+        ruleSectionWrapper.appendChild(ruleMatrix);
+        ruleSectionWrapper.appendChild(ruleString);
+        ruleSectionWrapper.appendChild(ruleActions);
         controlStack.appendChild(ruleSection);
 
-        const seedsSection = createControlsSection("Seeds", "Start from classic or random patterns.");
+        const seedsSectionWrapper = createControlsSection("Seeds", "Start from classic or random patterns.");
+        const seedsSection = seedsSectionWrapper.element;
         const seedButtons = document.createElement("div");
         seedButtons.className = "button-row";
         seedButtons.appendChild(createButton("Glider", seedGlider));
         seedButtons.appendChild(createButton("Random", seedRandom));
-        seedsSection.appendChild(seedButtons);
+        seedsSectionWrapper.appendChild(seedButtons);
         controlStack.appendChild(seedsSection);
 
         observeElementSize(stageInner, ({ width, height }) => {
@@ -1057,6 +1608,7 @@
           if (state.overlay.mode !== "none" && state.overlay.normalizedSites.length === 0) {
             seedOverlaySites(state.overlay.siteCount);
           }
+          updateGridDimensions();
           draw();
         });
 
@@ -1066,20 +1618,47 @@
           if (handleOverlayPointerDown(event)) {
             return;
           }
-          if (event.button !== 0) return;
+
           const point = renderController.mapEventToScene(event);
           if (!point) return;
           const coords = locateCell(point);
-          if (!coords) return;
-          event.preventDefault();
+          if (!coords) {
+            if (event.ctrlKey) {
+              event.preventDefault();
+              state.selectedCellKey = null;
+              updateHistoryPanel();
+              draw();
+            }
+            return;
+          }
+
           const key = keyFor(coords.x, coords.y);
+
+          if (event.ctrlKey) {
+            event.preventDefault();
+            if (state.selectedCellKey === key) {
+              state.selectedCellKey = null;
+            } else {
+              state.selectedCellKey = key;
+              getCellRecord(key);
+            }
+            updateHistoryPanel();
+            draw();
+            return;
+          }
+
+          if (event.button !== 0) return;
+
+          event.preventDefault();
           const alive = state.grid.has(key);
           state.dragMode = alive ? "erase" : "paint";
-          if (alive) {
-            state.grid.delete(key);
-          } else {
-            state.grid.add(key);
+          applyCellState(coords.x, coords.y, !alive);
+          if (!alive) {
+            state.selectedCellKey = key;
+          } else if (state.selectedCellKey === key) {
+            state.selectedCellKey = null;
           }
+          updateHistoryPanel();
           draw();
           canvas.setPointerCapture(event.pointerId);
         });
@@ -1095,12 +1674,17 @@
           if (!coords) return;
           const key = keyFor(coords.x, coords.y);
           if (state.dragMode === "paint") {
-            if (!state.grid.has(key)) {
-              state.grid.add(key);
+            if (applyCellState(coords.x, coords.y, true)) {
+              state.selectedCellKey = key;
+              updateHistoryPanel();
               draw();
             }
           } else if (state.dragMode === "erase") {
-            if (state.grid.delete(key)) {
+            if (applyCellState(coords.x, coords.y, false)) {
+              if (state.selectedCellKey === key) {
+                state.selectedCellKey = null;
+                updateHistoryPanel();
+              }
               draw();
             }
           }

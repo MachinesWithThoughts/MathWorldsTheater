@@ -441,10 +441,11 @@
           draw();
         });
 
-        const configuration = createControlsSection(
+        const configurationSection = createControlsSection(
           "Configuration",
           "Adjust site count and regenerate the diagram.",
         );
+        const configuration = configurationSection.element;
         const slider = createSlider({
           label: "Number of Sites",
           min: 3,
@@ -456,18 +457,19 @@
             resetSites(state.siteCount);
           },
         });
-        configuration.appendChild(slider.wrapper);
-        configuration.appendChild(
+        configurationSection.appendChild(slider.wrapper);
+        configurationSection.appendChild(
           createButton("Regenerate", () => {
             resetSites(state.siteCount);
           }),
         );
         controlStack.appendChild(configuration);
 
-        const interaction = createControlsSection(
+        const interactionSection = createControlsSection(
           "Interaction",
           "Drag site nodes to update the tessellation.",
         );
+        const interaction = interactionSection.element;
         const buttonRow = document.createElement("div");
         buttonRow.className = "button-row";
         buttonRow.appendChild(
@@ -475,13 +477,14 @@
             resetSites(state.siteCount);
           }),
         );
-        interaction.appendChild(buttonRow);
+        interactionSection.appendChild(buttonRow);
         controlStack.appendChild(interaction);
 
-        const renderingSection = createControlsSection(
+        const renderingSectionWrapper = createControlsSection(
           "Rendering",
           "Switch between Euclidean and spherical projections. Right-drag in spherical mode to rotate.",
         );
+        const renderingSection = renderingSectionWrapper.element;
         const modeSelect = createSelect({
           label: "Mode",
           options: [
@@ -520,9 +523,9 @@
           renderController.resetRotation();
           draw();
         });
-        renderingSection.appendChild(modeSelect.wrapper);
-        renderingSection.appendChild(wrapSelect.wrapper);
-        renderingSection.appendChild(resetRotationButton);
+        renderingSectionWrapper.appendChild(modeSelect.wrapper);
+        renderingSectionWrapper.appendChild(wrapSelect.wrapper);
+        renderingSectionWrapper.appendChild(resetRotationButton);
         controlStack.appendChild(renderingSection);
 
         function syncRenderingControls() {

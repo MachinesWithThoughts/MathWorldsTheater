@@ -406,7 +406,8 @@
           draw();
         }
 
-        const grammarSection = createControlsSection("Grammar", "Edit the axiom and production rules.");
+        const grammarSectionWrapper = createControlsSection("Grammar", "Edit the axiom and production rules.");
+        const grammarSection = grammarSectionWrapper.element;
         const axiomInput = createTextarea({
           label: "Axiom",
           value: state.axiom,
@@ -423,11 +424,12 @@
             updatePath();
           },
         });
-        grammarSection.appendChild(axiomInput.wrapper);
-        grammarSection.appendChild(rulesInput.wrapper);
+        grammarSectionWrapper.appendChild(axiomInput.wrapper);
+        grammarSectionWrapper.appendChild(rulesInput.wrapper);
         controlStack.appendChild(grammarSection);
 
-        const parameters = createControlsSection("Parameters", "Adjust angle, iterations, and segment length.");
+        const parametersSection = createControlsSection("Parameters", "Adjust angle, iterations, and segment length.");
+        const parameters = parametersSection.element;
         const angleSlider = createSlider({
           label: "Angle",
           min: 0,
@@ -458,12 +460,13 @@
             updatePath();
           },
         });
-        parameters.appendChild(angleSlider.wrapper);
-        parameters.appendChild(iterationsSlider.wrapper);
-        parameters.appendChild(lengthSlider.wrapper);
+        parametersSection.appendChild(angleSlider.wrapper);
+        parametersSection.appendChild(iterationsSlider.wrapper);
+        parametersSection.appendChild(lengthSlider.wrapper);
         controlStack.appendChild(parameters);
 
-        const presetsSection = createControlsSection("Presets", "Load sample grammars.");
+        const presetsSectionWrapper = createControlsSection("Presets", "Load sample grammars.");
+        const presetsSection = presetsSectionWrapper.element;
         const buttonRow = document.createElement("div");
         buttonRow.className = "button-row";
         Object.entries(presets).forEach(([name, preset]) => {
@@ -486,13 +489,14 @@
             }),
           );
         });
-        presetsSection.appendChild(buttonRow);
+        presetsSectionWrapper.appendChild(buttonRow);
         controlStack.appendChild(presetsSection);
 
-        const renderingSection = createControlsSection(
+        const renderingSectionWrapper = createControlsSection(
           "Rendering",
           "Switch between Euclidean and spherical projections. Right-drag in spherical mode to rotate.",
         );
+        const renderingSection = renderingSectionWrapper.element;
         const modeSelect = createSelect({
           label: "Mode",
           options: [
@@ -531,9 +535,9 @@
           renderController.resetRotation();
           draw();
         });
-        renderingSection.appendChild(modeSelect.wrapper);
-        renderingSection.appendChild(wrapSelect.wrapper);
-        renderingSection.appendChild(resetRotationButton);
+        renderingSectionWrapper.appendChild(modeSelect.wrapper);
+        renderingSectionWrapper.appendChild(wrapSelect.wrapper);
+        renderingSectionWrapper.appendChild(resetRotationButton);
         controlStack.appendChild(renderingSection);
 
         function syncRenderingControls() {

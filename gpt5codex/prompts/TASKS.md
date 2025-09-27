@@ -79,3 +79,14 @@ Generate a series of experimental standalone one-pager apps:
 
 ## v00.00.04 implementation
 - Surface the rule matrix in Game of Life controls with editable state, default reset, and copyable rule string.
+
+## implementation
+- Audit the Game of Life explorer to locate the existing configuration panels, rendering pipeline, and state handling for cell metadata.
+- Design UX updates for cell size controls, collapsible configuration sections, age-based color encoding, and a side-panel popup for cell history.
+- Implement the new controls, rendering adjustments, history tracking, and popup interactions within the Game of Life explorer codebase.
+- Refresh `README.md` to document the new features and note validation steps in `tests/` before updating the task statuses.
+- Extend configuration management to support a dynamic cell size slider (driving column/row recalculation) while preserving existing live cells where possible.
+- Update shared UI helpers so each control section can toggle open/closed with persisted default states.
+- Add age tracking to the simulation loop, render a perceptual gradient keyed to cell age, and surface a legend if needed in the UI.
+- Persist per-cell generation histories, expose them through click interactions, and render a responsive detail panel anchored to the right of the stage.
+- Document new controls and visual encodings in `README.md`, add coverage in `tests/`, then mark tasks with timestamps once verified.
