@@ -7,6 +7,6 @@
 
 ## Explorer-specific Checks
 - **Voronoi**: Drag sites in both modes, ensuring spherical projection keeps interaction responsive.
-- **Game of Life**: Toggle cells, run/pause simulation, confirm wrap modes influence neighbour calculations, and verify Voronoi/Delaunay overlays update as sites are reseeded, dragged, or when using live-cell Voronoi mode.
+- **Game of Life**: Toggle cells, run/pause simulation, confirm wrap modes influence neighbour calculations, verify Voronoi/Delaunay overlays (including live Voronoi), and adjust the rule matrix—toggling cells, copying the rule string, and resetting to default.
 - **Lindenmayer**: Modify grammar parameters and observe immediate updates in both projections.
 - **Mandelbrot**: Zoom via drag box and scroll wheel, confirm renders update in spherical view without artifacts.

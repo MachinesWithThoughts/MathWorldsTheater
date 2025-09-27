@@ -36,8 +36,21 @@ Generate a series of experimental standalone one-pager apps:
 
 1. [I] Add Voronoi + Delauney triagle options to the game-of-life-explorer (**COMPLETED**: 20250926-170800)
   - [I] Each cell is its own voronoi node (**COMPLETED**: 20250926-174500)
+
+# v00.00.04 - abstraction 1
+
+1. [I] Add the following to the game-of-life
+  - [I] Show the game-of-life rule matrix in the configuration panel.
+  - [I] Allow users to modify the rules.
+  - [I] Add a reset to default.
+  - [I] Generate a one-line definition of the rules to allow the user to copy them for later use. (**COMPLETED**: 20250926-182200)
+
+## v00.00.04 implementation
+- Surface the rule matrix in Game of Life controls with editable state, default reset, and copyable rule string.
   
 ------------------------------------------------------------------------------------------------
+
+# Implementation Notes
 ## v00.00.01 implementation
 
 - Create a shared scaffolding for explorer one-pagers: routing stub, build script, base layout, and reusable control panel styling.
@@ -58,3 +71,5 @@ Generate a series of experimental standalone one-pager apps:
 - Extend Game of Life controls with a world overlay selector (None, Voronoi, Delaunay) sharing the existing site set logic.
 - Implement Voronoi/Delaunay rendering pipelines that respect Euclidean and spherical modes, including wrap behaviour.
 - Document overlays in README/tests and update task status upon verification.
+
+#

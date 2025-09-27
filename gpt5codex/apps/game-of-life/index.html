@@ -140,6 +140,42 @@
         color: var(--accent);
       }
 
+      table.rule-matrix {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+      }
+
+      table.rule-matrix th,
+      table.rule-matrix td {
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        text-align: center;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+
+      table.rule-matrix td {
+        cursor: pointer;
+        transition: background 160ms ease, color 160ms ease;
+      }
+
+      table.rule-matrix td.active {
+        background: rgba(56, 189, 248, 0.22);
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      code.rule-string {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+      }
+
       input[type="range"] {
         appearance: none;
         width: 100%;
@@ -211,6 +247,10 @@
           speed: 6,
           renderMode: "euclidean",
           wrapMode: "none",
+          rules: {
+            survival: [2, 3],
+            birth: [3],
+          },
         };
 
         const state = {
@@ -459,9 +499,9 @@
             for (let y = 0; y < config.rows; y += 1) {
               const alive = state.grid.has(keyFor(x, y));
               const count = neighbors(x, y);
-              if (alive && (count === 2 || count === 3)) {
+              if (alive && config.rules.survival.includes(count)) {
                 next.add(keyFor(x, y));
-              } else if (!alive && count === 3) {
+              } else if (!alive && config.rules.birth.includes(count)) {
                 next.add(keyFor(x, y));
               }
             }
@@ -903,6 +943,106 @@
         overlaySection.appendChild(overlaySiteSlider.wrapper);
         overlaySection.appendChild(overlayButtons);
         controlStack.appendChild(overlaySection);
+
+        const ruleSection = createControlsSection(
+          "Rules",
+          "Adjust Life-like rule sets; copy or reset to default.",
+        );
+
+        const ruleMatrix = document.createElement("div");
+        ruleMatrix.className = "rule-matrix-wrapper";
+
+        const ruleString = document.createElement("code");
+        ruleString.className = "rule-string";
+
+        function updateRuleString() {
+          const birth = config.rules.birth.slice().sort((a, b) => a - b).join("");
+          const survival = config.rules.survival.slice().sort((a, b) => a - b).join("");
+          ruleString.textContent = `B${birth.length ? birth : 0}/S${survival.length ? survival : 0}`;
+        }
+
+        function renderRuleMatrix() {
+          ruleMatrix.innerHTML = "";
+          const table = document.createElement("table");
+          table.className = "rule-matrix";
+
+          const birthRow = document.createElement("tr");
+          const birthLabel = document.createElement("th");
+          birthLabel.textContent = "Birth";
+          birthRow.appendChild(birthLabel);
+          for (let i = 0; i <= 8; i += 1) {
+            const td = document.createElement("td");
+            td.dataset.mode = "birth";
+            td.dataset.value = String(i);
+            td.textContent = String(i);
+            if (config.rules.birth.includes(i)) {
+              td.classList.add("active");
+            }
+            birthRow.appendChild(td);
+          }
+          table.appendChild(birthRow);
+
+          const survivalRow = document.createElement("tr");
+          const survivalLabel = document.createElement("th");
+          survivalLabel.textContent = "Survival";
+          survivalRow.appendChild(survivalLabel);
+          for (let i = 0; i <= 8; i += 1) {
+            const td = document.createElement("td");
+            td.dataset.mode = "survival";
+            td.dataset.value = String(i);
+            td.textContent = String(i);
+            if (config.rules.survival.includes(i)) {
+              td.classList.add("active");
+            }
+            survivalRow.appendChild(td);
+          }
+          table.appendChild(survivalRow);
+
+          ruleMatrix.appendChild(table);
+          updateRuleString();
+        }
+
+        ruleMatrix.addEventListener("click", (event) => {
+          const cell = event.target.closest("td");
+          if (!cell) return;
+          const mode = cell.dataset.mode;
+          const value = Number(cell.dataset.value);
+          if (!Number.isFinite(value)) return;
+
+          const list = config.rules[mode];
+          const index = list.indexOf(value);
+          if (index === -1) {
+            list.push(value);
+            list.sort((a, b) => a - b);
+            cell.classList.add("active");
+          } else {
+            list.splice(index, 1);
+            cell.classList.remove("active");
+          }
+          updateRuleString();
+        });
+
+        const ruleActions = document.createElement("div");
+        ruleActions.className = "button-row";
+        ruleActions.appendChild(
+          createButton("Copy Rule", () => {
+            navigator.clipboard?.writeText(ruleString.textContent).catch(() => {});
+          }),
+        );
+        ruleActions.appendChild(
+          createButton("Reset Default", () => {
+            config.rules.birth = [3];
+            config.rules.survival = [2, 3];
+            renderRuleMatrix();
+            draw();
+          }),
+        );
+
+        renderRuleMatrix();
+        ruleSection.appendChild(ruleMatrix);
+        ruleSection.appendChild(ruleString);
+        ruleSection.appendChild(ruleActions);
+        controlStack.appendChild(ruleSection);
 
         const seedsSection = createControlsSection("Seeds", "Start from classic or random patterns.");
         const seedButtons = document.createElement("div");
