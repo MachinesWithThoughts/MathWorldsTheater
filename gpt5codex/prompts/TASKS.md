@@ -8,7 +8,9 @@ Beyond flat Euclidean space, the app will also support alternative geometries, s
 
 - https://chatgpt.com/g/g-p-6895419b687c819195f74e2fe6c95c9c/c/68d5c619-4f50-832e-a42a-af7d4db7ed0b
 
-# v00.00.01 - intial version
+# Requirements
+
+## v00.00.01 - intial version
 
 Generate a series of experimental standalone one-pager apps:
 
@@ -22,7 +24,7 @@ Generate a series of experimental standalone one-pager apps:
    - [I] Draw the bounding box as the user moves their mouse. (**COMPLETED**: 20250926-120500)
 
 
-# v00.00.02 - Advanced Rendering Features
+## v00.00.02 - Advanced Rendering Features
 1. [I] Add an dropdown to switch between Euclidean and Spherical renderings. (**COMPLETED**: 20250926-153000)
   - [I] Right dragging will rotate the Sphere. (**COMPLETED**: 20250926-153000)
   - [I] Add a Euclidean Left-Right, Up-Down, Full Wraparound options (**COMPLETED**: 20250926-153000)
@@ -32,23 +34,19 @@ Generate a series of experimental standalone one-pager apps:
   - [I] mandelbrot-explorer. (**COMPLETED**: 20250926-153000)
   - [I] voronoi-explorer. (**COMPLETED**: 20250926-153000)
 
-# v00.00.03 - combine the worlds.
+## v00.00.03 - combine the worlds.
 
 1. [I] Add Voronoi + Delauney triagle options to the game-of-life-explorer (**COMPLETED**: 20250926-170800)
   - [I] Each cell is its own voronoi node (**COMPLETED**: 20250926-174500)
 
-# v00.00.04 - abstraction 1
-
+## v00.00.04 - abstraction 1
 1. [I] Add the following to the game-of-life
   - [I] Show the game-of-life rule matrix in the configuration panel.
   - [I] Allow users to modify the rules.
   - [I] Add a reset to default.
   - [I] Generate a one-line definition of the rules to allow the user to copy them for later use. (**COMPLETED**: 20250926-182200)
 
-## v00.00.04 implementation
-- Surface the rule matrix in Game of Life controls with editable state, default reset, and copyable rule string.
-
-## v00.00.05 Refine UI
+## v00.00.05 - refine UI
 1. [R] Add feature to increase/decrease the pixel size of each cell.
 1. [R] All each configuration section to be expanded/collapsed.
 1. [R] Show the age of the cell state by color.
@@ -79,4 +77,5 @@ Generate a series of experimental standalone one-pager apps:
 - Implement Voronoi/Delaunay rendering pipelines that respect Euclidean and spherical modes, including wrap behaviour.
 - Document overlays in README/tests and update task status upon verification.
 
-#
+## v00.00.04 implementation
+- Surface the rule matrix in Game of Life controls with editable state, default reset, and copyable rule string.
