@@ -345,7 +345,8 @@
           requestRender();
         }
 
-        const viewControls = createControlsSection("View", "Modify iterations and reset the viewport.");
+        const viewControlsSection = createControlsSection("View", "Modify iterations and reset the viewport.");
+        const viewControls = viewControlsSection.element;
         const iterationSlider = createSlider({
           label: "Max Iterations",
           min: 50,
@@ -357,14 +358,15 @@
             requestRender();
           },
         });
-        viewControls.appendChild(iterationSlider.wrapper);
-        viewControls.appendChild(createButton("Reset View", resetView));
+        viewControlsSection.appendChild(iterationSlider.wrapper);
+        viewControlsSection.appendChild(createButton("Reset View", resetView));
         controlStack.appendChild(viewControls);
 
-        const renderingSection = createControlsSection(
+        const renderingSectionWrapper = createControlsSection(
           "Rendering",
           "Switch between Euclidean and spherical projections. Right-drag in spherical mode to rotate.",
         );
+        const renderingSection = renderingSectionWrapper.element;
         const modeSelect = createSelect({
           label: "Mode",
           options: [
@@ -403,9 +405,9 @@
           renderController.resetRotation();
           requestRender();
         });
-        renderingSection.appendChild(modeSelect.wrapper);
-        renderingSection.appendChild(wrapSelect.wrapper);
-        renderingSection.appendChild(resetRotationButton);
+        renderingSectionWrapper.appendChild(modeSelect.wrapper);
+        renderingSectionWrapper.appendChild(wrapSelect.wrapper);
+        renderingSectionWrapper.appendChild(resetRotationButton);
         controlStack.appendChild(renderingSection);
 
         function syncRenderingControls() {
@@ -418,9 +420,10 @@
 
         syncRenderingControls();
 
-        const statusSection = createControlsSection("Status", "Current center and scale.");
+        const statusSectionWrapper = createControlsSection("Status", "Current center and scale.", { collapsed: true });
+        const statusSection = statusSectionWrapper.element;
         const statusPill = createStatusPill("");
-        statusSection.appendChild(statusPill);
+        statusSectionWrapper.appendChild(statusPill);
         controlStack.appendChild(statusSection);
 
         function updateStatus() {

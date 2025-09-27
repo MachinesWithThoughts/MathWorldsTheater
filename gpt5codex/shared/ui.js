@@ -45,22 +45,96 @@
     return { root, controlsPanel, controlStack, stage, stageInner };
   }
 
-  function createControlsSection(title, description) {
+  function createControlsSection(title, description, options = {}) {
     const section = document.createElement("section");
     section.className = "controls-section";
 
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "section-toggle";
+    toggle.setAttribute("aria-expanded", "true");
+
     const heading = document.createElement("h2");
+    heading.className = "section-title";
     heading.textContent = title;
-    section.appendChild(heading);
+
+    const icon = document.createElement("span");
+    icon.className = "section-toggle-icon";
+    icon.textContent = "▾";
+
+    toggle.appendChild(heading);
+    toggle.appendChild(icon);
+    section.appendChild(toggle);
+
+    const content = document.createElement("div");
+    content.className = "section-content";
 
     if (description) {
       const note = document.createElement("p");
       note.className = "note";
       note.textContent = description;
-      section.appendChild(note);
+      content.appendChild(note);
     }
 
-    return section;
+    section.appendChild(content);
+
+    const defaultCollapsed = Boolean(options.collapsed);
+    let collapsed = defaultCollapsed;
+
+    function ensureContentHeight() {
+      if (!collapsed) {
+        const scrollHeight = content.scrollHeight;
+        content.style.maxHeight = `${scrollHeight}px`;
+      }
+    }
+
+    function applyCollapsedState(value) {
+      collapsed = value;
+      section.classList.toggle("collapsed", collapsed);
+      toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+      icon.textContent = collapsed ? "▸" : "▾";
+      if (collapsed) {
+        content.style.maxHeight = "0";
+      } else {
+        ensureContentHeight();
+      }
+    }
+
+    requestAnimationFrame(() => {
+      if (!collapsed) {
+        applyCollapsedState(false);
+      }
+    });
+
+    if (defaultCollapsed) {
+      applyCollapsedState(true);
+    }
+
+    toggle.addEventListener("click", () => {
+      applyCollapsedState(!collapsed);
+      if (options.onToggle) {
+        options.onToggle(!collapsed ? "expanded" : "collapsed");
+      }
+    });
+
+    return {
+      element: section,
+      content,
+      appendChild(child) {
+        content.appendChild(child);
+        ensureContentHeight();
+        return child;
+      },
+      setCollapsed(value) {
+        applyCollapsedState(Boolean(value));
+      },
+      isCollapsed() {
+        return collapsed;
+      },
+      refreshHeight() {
+        ensureContentHeight();
+      },
+    };
   }
 
   function createButton(label, onClick, { variant } = {}) {
