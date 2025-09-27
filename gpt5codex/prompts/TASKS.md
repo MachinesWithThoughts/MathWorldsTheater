@@ -47,10 +47,11 @@ Generate a series of experimental standalone one-pager apps:
   - [I] Generate a one-line definition of the rules to allow the user to copy them for later use. (**COMPLETED**: 20250926-182200)
 
 ## v00.00.05 - refine UI
-1. [R] Add feature to increase/decrease the pixel size of each cell.
-1. [R] All each configuration section to be expanded/collapsed.
-1. [R] Show the age of the cell state by color.
-1. [R] When a cell is clicked display the history of the cell state for each generation in a popup to the right
+1. [I] Add feature to increase/decrease the pixel size of each cell. (**COMPLETED**: 20250927-160500)
+1. [I] All each configuration section to be expanded/collapsed. (**COMPLETED**: 20250927-160500)
+1. [I] Show the age of the cell state by color. (**COMPLETED**: 20250927-160500)
+1. [I] When a cell is clicked display the history of the cell state for each generation in a popup to the right (**COMPLETED**: 20250927-160500)
+
 
 
 ------------------------------------------------------------------------------------------------

@@ -106,6 +106,10 @@
       }
     });
 
+    if (defaultCollapsed) {
+      applyCollapsedState(true);
+    }
+
     toggle.addEventListener("click", () => {
       applyCollapsedState(!collapsed);
       if (options.onToggle) {
@@ -126,6 +130,9 @@
       },
       isCollapsed() {
         return collapsed;
+      },
+      refreshHeight() {
+        ensureContentHeight();
       },
     };
   }
