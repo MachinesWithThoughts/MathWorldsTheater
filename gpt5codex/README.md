@@ -19,6 +19,7 @@ Interactive one-pager apps for exploring mathematical systems.
 - Toggle cells directly on the grid, then play/pause or step generations
 - Seed classic patterns (glider) or random boards; tune simulation speed
 - Choose Euclidean vs spherical rendering with per-axis wrap modes and rotation controls
+- Blend optional Voronoi (site-driven or live-cell) or Delaunay overlays using shared site controls for hybrid visualizations
 
 ### Lindenmayer System Explorer
 - Edit the axiom and production rules via text areas with instant redraws

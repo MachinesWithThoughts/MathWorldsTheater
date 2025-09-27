@@ -218,6 +218,11 @@
           generation: 0,
           timer: null,
           dragMode: null,
+          overlay: {
+            mode: "none",
+            siteCount: 24,
+            normalizedSites: [],
+          },
         };
 
         const { controlStack, stageInner } = setupApp({
@@ -289,7 +294,7 @@
               const coords = normalizeCoordinates(x + dx, y + dy);
               if (!coords) continue;
               if (state.grid.has(keyFor(coords.x, coords.y))) {
-                count += 1;
+                  count += 1;
               }
             }
           }
@@ -348,6 +353,8 @@
           ctx.textBaseline = "bottom";
           ctx.fillText(`Generation ${state.generation}`, 12, pixelHeight - 12);
 
+          drawOverlay(ctx, pixelWidth, pixelHeight);
+
           targetCtx.drawImage(
             offscreenCanvas,
             0,
@@ -359,6 +366,85 @@
             width,
             height,
           );
+        }
+
+        function drawOverlay(ctx, width, height) {
+          if (state.overlay.mode === "none") {
+            return;
+          }
+
+          let points;
+          if (state.overlay.mode === "voronoi-live") {
+            points = Array.from(state.grid).map((key) => {
+              const [col, row] = key.split(",").map(Number);
+              return {
+                x: (col + 0.5) * (width / config.columns),
+                y: (row + 0.5) * (height / config.rows),
+              };
+            });
+          } else {
+            points = state.overlay.normalizedSites.map((site) => ({
+              x: site.x * width,
+              y: site.y * height,
+            }));
+          }
+
+          if (!points.length) {
+            return;
+          }
+
+          if (state.overlay.mode === "voronoi" || state.overlay.mode === "voronoi-live") {
+            const cells = generateVoronoiCells(points, width, height);
+            ctx.save();
+            ctx.globalAlpha = 0.4;
+            ctx.lineWidth = 1.5;
+            cells.forEach((cell) => {
+              if (cell.length < 3) return;
+              ctx.beginPath();
+              ctx.moveTo(cell[0].x, cell[0].y);
+              for (let i = 1; i < cell.length; i += 1) {
+                ctx.lineTo(cell[i].x, cell[i].y);
+              }
+              ctx.closePath();
+              ctx.fillStyle = "rgba(56, 189, 248, 0.18)";
+              ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
+              ctx.fill();
+              ctx.stroke();
+            });
+            ctx.restore();
+          } else if (state.overlay.mode === "delaunay") {
+            const triangles = triangulateDelaunay(points, width, height);
+            ctx.save();
+            ctx.globalAlpha = 0.7;
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = "rgba(56, 189, 248, 0.55)";
+            ctx.fillStyle = "rgba(14, 165, 233, 0.12)";
+            triangles.forEach((triangle) => {
+              const { a, b, c } = triangle;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.lineTo(c.x, c.y);
+              ctx.closePath();
+              ctx.fill();
+              ctx.stroke();
+            });
+            ctx.restore();
+          }
+
+          if (state.overlay.mode !== "voronoi-live") {
+            ctx.save();
+            ctx.fillStyle = "#f8fafc";
+            ctx.strokeStyle = "rgba(15, 23, 42, 0.8)";
+            ctx.lineWidth = 2;
+            state.overlay.normalizedSites.forEach((site) => {
+              ctx.beginPath();
+              ctx.arc(site.x * width, site.y * height, 6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+            });
+            ctx.restore();
+          }
         }
 
         function draw() {
@@ -441,6 +527,236 @@
             }
           }
           draw();
+        }
+
+        function randomSites(count) {
+          const sites = [];
+          for (let i = 0; i < count; i += 1) {
+            sites.push({
+              x: Math.random(),
+              y: Math.random(),
+            });
+          }
+          return sites;
+        }
+
+        function clamp(value, min, max) {
+          return Math.max(min, Math.min(max, value));
+        }
+
+        function toSceneCoordinates(site) {
+          const { cssWidth, cssHeight } = renderController.getState();
+          return {
+            x: site.x * cssWidth,
+            y: site.y * cssHeight,
+          };
+        }
+
+        function toNormalizedCoordinates(scenePoint) {
+          const { cssWidth, cssHeight } = renderController.getState();
+          if (cssWidth === 0 || cssHeight === 0) {
+            return null;
+          }
+          return {
+            x: clamp(scenePoint.x / cssWidth, 0, 1),
+            y: clamp(scenePoint.y / cssHeight, 0, 1),
+          };
+        }
+
+        function seedOverlaySites(count) {
+          state.overlay.normalizedSites = randomSites(count);
+        }
+
+        function generateVoronoiCells(points, width, height) {
+          if (!points.length) return [];
+
+          const polygons = points.map(() => [
+            { x: 0, y: 0 },
+            { x: width, y: 0 },
+            { x: width, y: height },
+            { x: 0, y: height },
+          ]);
+
+          const clipPolygon = (polygon, a, b) => {
+            const output = [];
+            for (let i = 0; i < polygon.length; i += 1) {
+              const current = polygon[i];
+              const prev = polygon[(i + polygon.length - 1) % polygon.length];
+              const sideCurrent = (b.x - a.x) * (current.y - a.y) - (b.y - a.y) * (current.x - a.x);
+              const sidePrev = (b.x - a.x) * (prev.y - a.y) - (b.y - a.y) * (prev.x - a.x);
+
+              if (sideCurrent <= 0) {
+                if (sidePrev > 0) {
+                  const t = sidePrev / (sidePrev - sideCurrent);
+                  output.push({
+                    x: prev.x + (current.x - prev.x) * t,
+                    y: prev.y + (current.y - prev.y) * t,
+                  });
+                }
+                output.push(current);
+              } else if (sidePrev <= 0) {
+                const t = sidePrev / (sidePrev - sideCurrent);
+                output.push({
+                  x: prev.x + (current.x - prev.x) * t,
+                  y: prev.y + (current.y - prev.y) * t,
+                });
+              }
+            }
+            return output;
+          };
+
+          for (let i = 0; i < points.length; i += 1) {
+            const siteI = points[i];
+            for (let j = 0; j < points.length; j += 1) {
+              if (i === j) continue;
+              const siteJ = points[j];
+              const midX = (siteI.x + siteJ.x) / 2;
+              const midY = (siteI.y + siteJ.y) / 2;
+              const dx = siteJ.x - siteI.x;
+              const dy = siteJ.y - siteI.y;
+              const midpoint = { x: midX, y: midY };
+              const normal = {
+                x: midpoint.x + dy,
+                y: midpoint.y - dx,
+              };
+              const alt = {
+                x: midpoint.x - dy,
+                y: midpoint.y + dx,
+              };
+              const polygon = clipPolygon(polygons[i], midpoint, normal);
+              polygons[i] = polygon.length === 0 ? clipPolygon(polygons[i], midpoint, alt) : polygon;
+            }
+          }
+
+          return polygons;
+        }
+
+        function triangulateDelaunay(points) {
+          if (points.length < 3) return [];
+
+          const normalized = points.map((site) => ({ x: site.x, y: site.y }));
+
+          const superTriangle = [
+            { x: -10, y: -10 },
+            { x: 10, y: -10 },
+            { x: 0, y: 10 },
+          ];
+
+          const triangles = [{
+            a: superTriangle[0],
+            b: superTriangle[1],
+            c: superTriangle[2],
+          }];
+
+          function pointInCircumcircle(triangle, point) {
+            const { a, b, c } = triangle;
+            const ax = a.x - point.x;
+            const ay = a.y - point.y;
+            const bx = b.x - point.x;
+            const by = b.y - point.y;
+            const cx = c.x - point.x;
+            const cy = c.y - point.y;
+            const det = (ax * ax + ay * ay) * (bx * cy - by * cx)
+              - (bx * bx + by * by) * (ax * cy - ay * cx)
+              + (cx * cx + cy * cy) * (ax * by - ay * bx);
+            return det > 0;
+          }
+
+          function edgesMatch(e1, e2) {
+            return (
+              (e1[0].x === e2[1].x && e1[0].y === e2[1].y && e1[1].x === e2[0].x && e1[1].y === e2[0].y)
+              || (e1[0].x === e2[0].x && e1[0].y === e2[0].y && e1[1].x === e2[1].x && e1[1].y === e2[1].y)
+            );
+          }
+
+          normalized.forEach((point) => {
+            const badTriangles = [];
+            for (let i = triangles.length - 1; i >= 0; i -= 1) {
+              if (pointInCircumcircle(triangles[i], point)) {
+                badTriangles.push(triangles[i]);
+                triangles.splice(i, 1);
+              }
+            }
+
+            const edgeBuffer = [];
+            badTriangles.forEach((triangle) => {
+              edgeBuffer.push([triangle.a, triangle.b]);
+              edgeBuffer.push([triangle.b, triangle.c]);
+              edgeBuffer.push([triangle.c, triangle.a]);
+            });
+
+            const boundaryEdges = edgeBuffer.filter((edge, index, array) => {
+              const duplicates = array.filter((other, otherIndex) => otherIndex !== index && edgesMatch(edge, other));
+              return duplicates.length === 0;
+            });
+
+            boundaryEdges.forEach((edge) => {
+              triangles.push({ a: edge[0], b: edge[1], c: point });
+            });
+          });
+
+          return triangles.filter((triangle) => (
+            triangle.a !== superTriangle[0]
+            && triangle.a !== superTriangle[1]
+            && triangle.a !== superTriangle[2]
+            && triangle.b !== superTriangle[0]
+            && triangle.b !== superTriangle[1]
+            && triangle.b !== superTriangle[2]
+            && triangle.c !== superTriangle[0]
+            && triangle.c !== superTriangle[1]
+            && triangle.c !== superTriangle[2]
+          ));
+        }
+
+        function locateOverlaySite(point, tolerance = 16) {
+          const { cssWidth, cssHeight } = renderController.getState();
+          if (!cssWidth || !cssHeight) return null;
+          const toleranceSq = tolerance * tolerance;
+          for (let i = state.overlay.normalizedSites.length - 1; i >= 0; i -= 1) {
+            const site = state.overlay.normalizedSites[i];
+            const sx = site.x * cssWidth;
+            const sy = site.y * cssHeight;
+            const dx = sx - point.x;
+            const dy = sy - point.y;
+            if (dx * dx + dy * dy <= toleranceSq) {
+              return i;
+            }
+          }
+          return null;
+        }
+
+        let overlayDragIndex = null;
+
+        function handleOverlayPointerDown(event) {
+          if (state.overlay.mode === "none") return false;
+          const scenePoint = renderController.mapEventToScene(event);
+          if (!scenePoint) return false;
+          const index = locateOverlaySite(scenePoint);
+          if (index === null) {
+            return false;
+          }
+          overlayDragIndex = index;
+          canvas.setPointerCapture(event.pointerId);
+          event.preventDefault();
+          return true;
+        }
+
+        function handleOverlayPointerMove(event) {
+          if (overlayDragIndex === null) return false;
+          const scenePoint = renderController.mapEventToScene(event);
+          if (!scenePoint) return false;
+          const normalized = toNormalizedCoordinates(scenePoint);
+          if (!normalized) return false;
+          state.overlay.normalizedSites[overlayDragIndex] = normalized;
+          draw();
+          return true;
+        }
+
+        function handleOverlayPointerUp(event) {
+          if (overlayDragIndex !== null && canvas.hasPointerCapture(event.pointerId)) {
+            canvas.releasePointerCapture(event.pointerId);
+          }
+          overlayDragIndex = null;
         }
 
         let playPauseButton;
@@ -532,6 +848,62 @@
 
         syncRenderingControls();
 
+        const overlaySection = createControlsSection(
+          "World Overlay",
+          "Blend Voronoi cells or Delaunay triangles over the automaton grid.",
+        );
+        const overlayModeSelect = createSelect({
+          label: "Overlay Mode",
+          options: [
+            { value: "none", label: "None" },
+            { value: "voronoi", label: "Voronoi (Sites)" },
+            { value: "voronoi-live", label: "Voronoi (Live Cells)" },
+            { value: "delaunay", label: "Delaunay" },
+          ],
+          value: state.overlay.mode,
+          onChange: (value) => {
+            state.overlay.mode = value;
+            if (value === "voronoi-live") {
+              state.overlay.normalizedSites = [];
+            } else if (value !== "none" && state.overlay.normalizedSites.length === 0) {
+              seedOverlaySites(state.overlay.siteCount);
+            }
+            draw();
+          },
+        });
+        const overlaySiteSlider = createSlider({
+          label: "Overlay Sites",
+          min: 3,
+          max: 64,
+          step: 1,
+          value: state.overlay.siteCount,
+          onChange: (value) => {
+            state.overlay.siteCount = Number(value);
+            if (state.overlay.mode !== "none") {
+              seedOverlaySites(state.overlay.siteCount);
+              draw();
+            }
+          },
+        });
+        const overlayButtons = document.createElement("div");
+        overlayButtons.className = "button-row";
+        overlayButtons.appendChild(createButton("Reseed", () => {
+          if (state.overlay.mode === "none" || state.overlay.mode === "voronoi-live") return;
+          seedOverlaySites(state.overlay.siteCount);
+          draw();
+        }));
+        overlayButtons.appendChild(createButton("Clear Overlay", () => {
+          state.overlay.mode = "none";
+          state.overlay.normalizedSites = [];
+          overlayModeSelect.select.value = "none";
+          draw();
+        }));
+
+        overlaySection.appendChild(overlayModeSelect.wrapper);
+        overlaySection.appendChild(overlaySiteSlider.wrapper);
+        overlaySection.appendChild(overlayButtons);
+        controlStack.appendChild(overlaySection);
+
         const seedsSection = createControlsSection("Seeds", "Start from classic or random patterns.");
         const seedButtons = document.createElement("div");
         seedButtons.className = "button-row";
@@ -542,12 +914,18 @@
 
         observeElementSize(stageInner, ({ width, height }) => {
           renderController.resize(width, height);
+          if (state.overlay.mode !== "none" && state.overlay.normalizedSites.length === 0) {
+            seedOverlaySites(state.overlay.siteCount);
+          }
           draw();
         });
 
         renderController.onChange(draw);
 
         canvas.addEventListener("pointerdown", (event) => {
+          if (handleOverlayPointerDown(event)) {
+            return;
+          }
           if (event.button !== 0) return;
           const point = renderController.mapEventToScene(event);
           if (!point) return;
@@ -567,6 +945,9 @@
         });
 
         canvas.addEventListener("pointermove", (event) => {
+          if (handleOverlayPointerMove(event)) {
+            return;
+          }
           if (!state.dragMode) return;
           const point = renderController.mapEventToScene(event);
           if (!point) return;
@@ -586,6 +967,9 @@
         });
 
         function endPaint(event) {
+          if (overlayDragIndex !== null) {
+            handleOverlayPointerUp(event);
+          }
           if (state.dragMode && canvas.hasPointerCapture && canvas.hasPointerCapture(event.pointerId)) {
             canvas.releasePointerCapture(event.pointerId);
           }

@@ -32,6 +32,12 @@ Generate a series of experimental standalone one-pager apps:
   - [I] mandelbrot-explorer. (**COMPLETED**: 20250926-153000)
   - [I] voronoi-explorer. (**COMPLETED**: 20250926-153000)
 
+# v00.00.03 - combine the worlds.
+
+1. [I] Add Voronoi + Delauney triagle options to the game-of-life-explorer (**COMPLETED**: 20250926-170800)
+  - [I] Each cell is its own voronoi node (**COMPLETED**: 20250926-174500)
+  
+------------------------------------------------------------------------------------------------
 ## v00.00.01 implementation
 
 - Create a shared scaffolding for explorer one-pagers: routing stub, build script, base layout, and reusable control panel styling.
@@ -47,3 +53,8 @@ Generate a series of experimental standalone one-pager apps:
 - Integrate the new rendering mode support into `game-of-life-explorer`, `lindenmeyer-explorer`, `mandelbrot-explorer`, and `voronoi-explorer`.
 - Update `README.md`, run verification in `tests/`, and record task completions with timestamps once confirmed.
 - Provide a central landing page at `apps/index.html` linking to each explorer for local browsing.
+
+## v00.00.03 implementation
+- Extend Game of Life controls with a world overlay selector (None, Voronoi, Delaunay) sharing the existing site set logic.
+- Implement Voronoi/Delaunay rendering pipelines that respect Euclidean and spherical modes, including wrap behaviour.
+- Document overlays in README/tests and update task status upon verification.
