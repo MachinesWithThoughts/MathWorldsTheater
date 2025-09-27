@@ -51,9 +51,15 @@ Generate a series of experimental standalone one-pager apps:
 1. [I] All each configuration section to be expanded/collapsed. (**COMPLETED**: 20250927-160500)
 1. [I] Show the age of the cell state by color. (**COMPLETED**: 20250927-160500)
 1. [I] When a cell is clicked display the history of the cell state for each generation in a popup to the right (**COMPLETED**: 20250927-160500)
+1. [I] for the history, also display a small square to show the color corresponding to its age (**COMPLETED**: 20250927-160650)
+1. [I] use shift-click to toggle the history (**COMPLETED**: 20250927-160650)
 
+## v00.00.06 - fix Voronoi
 
-
+1. [I] Remove the `Voronoi (sites)` option. (**COMPLETED**: 20250927-161400)
+2. [I] The `Delaunay` option should work with the cells, similar to `Voronoi (Live Cells)` (**COMPLETED**: 20250927-161400)
+3. [I] Add a `Voronoi (Live Cells) Colored` option. (**COMPLETED**: 20250927-161400)
+ 
 ------------------------------------------------------------------------------------------------
 
 # Implementation Notes
@@ -81,7 +87,7 @@ Generate a series of experimental standalone one-pager apps:
 ## v00.00.04 implementation
 - Surface the rule matrix in Game of Life controls with editable state, default reset, and copyable rule string.
 
-## implementation
+## #v00.00.06 implementation
 - Audit the Game of Life explorer to locate the existing configuration panels, rendering pipeline, and state handling for cell metadata.
 - Design UX updates for cell size controls, collapsible configuration sections, age-based color encoding, and a side-panel popup for cell history.
 - Implement the new controls, rendering adjustments, history tracking, and popup interactions within the Game of Life explorer codebase.

@@ -507,7 +507,6 @@
           dragMode: null,
           overlay: {
             mode: "none",
-            siteCount: 24,
             normalizedSites: [],
           },
           selectedCellKey: null,
@@ -687,6 +686,37 @@
           const rawX = Math.floor(point.x / cellWidth);
           const rawY = Math.floor(point.y / cellHeight);
           return normalizeCoordinates(rawX, rawY);
+        }
+
+        function colorWithAlpha(rgbString, alpha) {
+          const match = /rgb\((\d+),\s*(\d+),\s*(\d+)\)/i.exec(rgbString ?? "");
+          if (!match) {
+            return rgbString ?? `rgba(56, 189, 248, ${alpha})`;
+          }
+          const [, r, g, b] = match;
+          return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function getOverlayColorForKey(key) {
+          const defaultFill = "rgba(56, 189, 248, 0.25)";
+          const defaultStroke = "rgba(148, 163, 184, 0.6)";
+
+          if (!key || !state.cellRecords.has(key)) {
+            return {
+              fill: defaultFill,
+              stroke: defaultStroke,
+            };
+          }
+
+          const record = state.cellRecords.get(key);
+          const age = record?.age ?? 0;
+          const base = getAgeColor(age);
+          const alive = state.grid.has(key);
+
+          return {
+            fill: colorWithAlpha(base, alive ? 0.45 : 0.18),
+            stroke: colorWithAlpha(base, alive ? 0.9 : 0.35),
+          };
         }
 
         function neighbors(x, y) {
@@ -875,12 +905,13 @@
           }
 
           let points;
-          if (state.overlay.mode === "voronoi-live") {
+          if (state.overlay.mode === "voronoi-live" || state.overlay.mode === "voronoi-live-colored" || state.overlay.mode === "delaunay") {
             points = Array.from(state.grid).map((key) => {
               const [col, row] = key.split(",").map(Number);
               return {
                 x: (col + 0.5) * (width / config.columns),
                 y: (row + 0.5) * (height / config.rows),
+                key,
               };
             });
           } else {
@@ -894,12 +925,12 @@
             return;
           }
 
-          if (state.overlay.mode === "voronoi" || state.overlay.mode === "voronoi-live") {
+          if (state.overlay.mode === "voronoi" || state.overlay.mode === "voronoi-live" || state.overlay.mode === "voronoi-live-colored") {
             const cells = generateVoronoiCells(points, width, height);
             ctx.save();
-            ctx.globalAlpha = 0.4;
+            ctx.globalAlpha = state.overlay.mode === "voronoi-live-colored" ? 1 : 0.4;
             ctx.lineWidth = 1.5;
-            cells.forEach((cell) => {
+            cells.forEach((cell, index) => {
               if (cell.length < 3) return;
               ctx.beginPath();
               ctx.moveTo(cell[0].x, cell[0].y);
@@ -907,8 +938,14 @@
                 ctx.lineTo(cell[i].x, cell[i].y);
               }
               ctx.closePath();
-              ctx.fillStyle = "rgba(56, 189, 248, 0.18)";
-              ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
+              if (state.overlay.mode === "voronoi-live-colored") {
+                const color = getOverlayColorForKey(points[index]?.key);
+                ctx.fillStyle = color.fill;
+                ctx.strokeStyle = color.stroke;
+              } else {
+                ctx.fillStyle = "rgba(56, 189, 248, 0.18)";
+                ctx.strokeStyle = "rgba(148, 163, 184, 0.4)";
+              }
               ctx.fill();
               ctx.stroke();
             });
@@ -921,19 +958,22 @@
             ctx.strokeStyle = "rgba(56, 189, 248, 0.55)";
             ctx.fillStyle = "rgba(14, 165, 233, 0.12)";
             triangles.forEach((triangle) => {
-              const { a, b, c } = triangle;
+              const { a, b, c, index: keyIndex } = triangle;
+              const color = getOverlayColorForKey(points[keyIndex]?.key);
               ctx.beginPath();
               ctx.moveTo(a.x, a.y);
               ctx.lineTo(b.x, b.y);
               ctx.lineTo(c.x, c.y);
               ctx.closePath();
+              ctx.fillStyle = color.fill;
+              ctx.strokeStyle = color.stroke;
               ctx.fill();
               ctx.stroke();
             });
             ctx.restore();
           }
 
-          if (state.overlay.mode !== "voronoi-live") {
+          if (state.overlay.mode !== "voronoi-live" && state.overlay.mode !== "voronoi-live-colored" && state.overlay.mode !== "delaunay") {
             ctx.save();
             ctx.fillStyle = "#f8fafc";
             ctx.strokeStyle = "rgba(15, 23, 42, 0.8)";
@@ -1151,10 +1191,6 @@
           };
         }
 
-        function seedOverlaySites(count) {
-          state.overlay.normalizedSites = randomSites(count);
-        }
-
         function generateVoronoiCells(points, width, height) {
           if (!points.length) return [];
 
@@ -1222,7 +1258,7 @@
         function triangulateDelaunay(points) {
           if (points.length < 3) return [];
 
-          const normalized = points.map((site) => ({ x: site.x, y: site.y }));
+          const normalized = points.map((site, index) => ({ x: site.x, y: site.y, index }));
 
           const superTriangle = [
             { x: -10, y: -10 },
@@ -1234,6 +1270,7 @@
             a: superTriangle[0],
             b: superTriangle[1],
             c: superTriangle[2],
+            index: null,
           }];
 
           function pointInCircumcircle(triangle, point) {
@@ -1279,7 +1316,7 @@
             });
 
             boundaryEdges.forEach((edge) => {
-              triangles.push({ a: edge[0], b: edge[1], c: point });
+              triangles.push({ a: edge[0], b: edge[1], c: point, index: point.index });
             });
           });
 
@@ -1313,39 +1350,15 @@
           return null;
         }
 
-        let overlayDragIndex = null;
-
-        function handleOverlayPointerDown(event) {
-          if (state.overlay.mode === "none") return false;
-          const scenePoint = renderController.mapEventToScene(event);
-          if (!scenePoint) return false;
-          const index = locateOverlaySite(scenePoint);
-          if (index === null) {
-            return false;
-          }
-          overlayDragIndex = index;
-          canvas.setPointerCapture(event.pointerId);
-          event.preventDefault();
-          return true;
+        function handleOverlayPointerDown() {
+          return false;
         }
 
-        function handleOverlayPointerMove(event) {
-          if (overlayDragIndex === null) return false;
-          const scenePoint = renderController.mapEventToScene(event);
-          if (!scenePoint) return false;
-          const normalized = toNormalizedCoordinates(scenePoint);
-          if (!normalized) return false;
-          state.overlay.normalizedSites[overlayDragIndex] = normalized;
-          draw();
-          return true;
+        function handleOverlayPointerMove() {
+          return false;
         }
 
-        function handleOverlayPointerUp(event) {
-          if (overlayDragIndex !== null && canvas.hasPointerCapture(event.pointerId)) {
-            canvas.releasePointerCapture(event.pointerId);
-          }
-          overlayDragIndex = null;
-        }
+        function handleOverlayPointerUp() {}
 
         let playPauseButton;
 
@@ -1446,57 +1459,31 @@
 
         syncRenderingControls();
 
-        const overlaySectionWrapper = createControlsSection("World Overlay", "Blend Voronoi cells or Delaunay triangles over the automaton grid.");
+        const overlaySectionWrapper = createControlsSection("World Overlay", "Blend live-cell Voronoi or Delaunay overlays.");
         const overlaySection = overlaySectionWrapper.element;
         const overlayModeSelect = createSelect({
           label: "Overlay Mode",
           options: [
             { value: "none", label: "None" },
-            { value: "voronoi", label: "Voronoi (Sites)" },
             { value: "voronoi-live", label: "Voronoi (Live Cells)" },
+            { value: "voronoi-live-colored", label: "Voronoi (Live Cells, Colored)" },
             { value: "delaunay", label: "Delaunay" },
           ],
           value: state.overlay.mode,
           onChange: (value) => {
             state.overlay.mode = value;
-            if (value === "voronoi-live") {
-              state.overlay.normalizedSites = [];
-            } else if (value !== "none" && state.overlay.normalizedSites.length === 0) {
-              seedOverlaySites(state.overlay.siteCount);
-            }
             draw();
-          },
-        });
-        const overlaySiteSlider = createSlider({
-          label: "Overlay Sites",
-          min: 3,
-          max: 64,
-          step: 1,
-          value: state.overlay.siteCount,
-          onChange: (value) => {
-            state.overlay.siteCount = Number(value);
-            if (state.overlay.mode !== "none") {
-              seedOverlaySites(state.overlay.siteCount);
-              draw();
-            }
           },
         });
         const overlayButtons = document.createElement("div");
         overlayButtons.className = "button-row";
-        overlayButtons.appendChild(createButton("Reseed", () => {
-          if (state.overlay.mode === "none" || state.overlay.mode === "voronoi-live") return;
-          seedOverlaySites(state.overlay.siteCount);
-          draw();
-        }));
         overlayButtons.appendChild(createButton("Clear Overlay", () => {
           state.overlay.mode = "none";
-          state.overlay.normalizedSites = [];
           overlayModeSelect.select.value = "none";
           draw();
         }));
 
         overlaySectionWrapper.appendChild(overlayModeSelect.wrapper);
-        overlaySectionWrapper.appendChild(overlaySiteSlider.wrapper);
         overlaySectionWrapper.appendChild(overlayButtons);
         controlStack.appendChild(overlaySection);
 
@@ -1612,9 +1599,6 @@
 
         observeElementSize(stageInner, ({ width, height }) => {
           renderController.resize(width, height);
-          if (state.overlay.mode !== "none" && state.overlay.normalizedSites.length === 0) {
-            seedOverlaySites(state.overlay.siteCount);
-          }
           updateGridDimensions();
           draw();
         });
@@ -1630,7 +1614,7 @@
           if (!point) return;
           const coords = locateCell(point);
           if (!coords) {
-            if (event.ctrlKey) {
+            if (event.shiftKey) {
               event.preventDefault();
               state.selectedCellKey = null;
               updateHistoryPanel();
@@ -1641,7 +1625,7 @@
 
           const key = keyFor(coords.x, coords.y);
 
-          if (event.ctrlKey) {
+          if (event.shiftKey) {
             event.preventDefault();
             if (state.selectedCellKey === key) {
               state.selectedCellKey = null;
@@ -1698,9 +1682,6 @@
         });
 
         function endPaint(event) {
-          if (overlayDragIndex !== null) {
-            handleOverlayPointerUp(event);
-          }
           if (state.dragMode && canvas.hasPointerCapture && canvas.hasPointerCapture(event.pointerId)) {
             canvas.releasePointerCapture(event.pointerId);
           }
