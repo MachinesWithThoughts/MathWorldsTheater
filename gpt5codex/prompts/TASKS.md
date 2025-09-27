@@ -47,7 +47,14 @@ Generate a series of experimental standalone one-pager apps:
 
 ## v00.00.04 implementation
 - Surface the rule matrix in Game of Life controls with editable state, default reset, and copyable rule string.
-  
+
+## v00.00.05 Refine UI
+1. [R] Add feature to increase/decrease the pixel size of each cell.
+1. [R] All each configuration section to be expanded/collapsed.
+1. [R] Show the age of the cell state by color.
+1. [R] When a cell is clicked display the history of the cell state for each generation in a popup to the right
+
+
 ------------------------------------------------------------------------------------------------
 
 # Implementation Notes
