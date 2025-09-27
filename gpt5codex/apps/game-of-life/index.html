@@ -723,17 +723,21 @@
           const record = getCellRecord(key);
           const stateValue = alive ? "alive" : "dead";
           const previousState = record.lastState ?? "dead";
+          const previousAge = record.age;
 
           if (previousState !== stateValue) {
             record.toggles += 1;
           }
 
+          let entryAge = 0;
           if (stateValue === "alive") {
             record.age = previousState === "alive" ? record.age + 1 : 1;
             record.currentStreak = previousState === "alive" ? record.currentStreak + 1 : 1;
             record.longestStreak = Math.max(record.longestStreak, record.currentStreak);
             record.lastAliveGeneration = generation;
+            entryAge = record.age;
           } else {
+            entryAge = previousAge;
             record.age = 0;
             record.currentStreak = 0;
           }
@@ -742,12 +746,13 @@
 
           const lastEntry = record.history[record.history.length - 1];
           if (!lastEntry || lastEntry.generation !== generation) {
-            record.history.push({ generation, state: stateValue });
+            record.history.push({ generation, state: stateValue, age: entryAge });
             if (record.history.length > MAX_HISTORY_RENDER) {
               record.history.shift();
             }
           } else {
             lastEntry.state = stateValue;
+            lastEntry.age = entryAge;
           }
 
           return record;
@@ -992,8 +997,10 @@
               const swatch = document.createElement("span");
               swatch.className = "timeline-age-swatch";
               swatch.dataset.state = entry.state;
-              if (entry.state === "alive") {
-                swatch.style.background = getAgeColor(record.age);
+              const ageColor = getAgeColor(entry.age ?? 0);
+              swatch.style.background = ageColor;
+              if (entry.state !== "alive") {
+                swatch.style.opacity = "0.45";
               }
               const stateLabel = document.createElement("span");
               stateLabel.textContent = entry.state === "alive" ? "Alive" : "Dead";
