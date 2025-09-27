@@ -51,7 +51,8 @@ Generate a series of experimental standalone one-pager apps:
 1. [I] All each configuration section to be expanded/collapsed. (**COMPLETED**: 20250927-160500)
 1. [I] Show the age of the cell state by color. (**COMPLETED**: 20250927-160500)
 1. [I] When a cell is clicked display the history of the cell state for each generation in a popup to the right (**COMPLETED**: 20250927-160500)
-
+1. [I] for the history, also display a small square to show the color corresponding to its age (**COMPLETED**: 20250927-160650)
+1. [I] use shift-click to toggle the history (**COMPLETED**: 20250927-160650)
 
 
 ------------------------------------------------------------------------------------------------

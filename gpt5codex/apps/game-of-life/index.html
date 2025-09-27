@@ -1630,7 +1630,7 @@
           if (!point) return;
           const coords = locateCell(point);
           if (!coords) {
-            if (event.ctrlKey) {
+            if (event.shiftKey) {
               event.preventDefault();
               state.selectedCellKey = null;
               updateHistoryPanel();
@@ -1641,7 +1641,7 @@
 
           const key = keyFor(coords.x, coords.y);
 
-          if (event.ctrlKey) {
+          if (event.shiftKey) {
             event.preventDefault();
             if (state.selectedCellKey === key) {
               state.selectedCellKey = null;

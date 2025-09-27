@@ -21,7 +21,7 @@ Interactive one-pager apps for exploring mathematical systems.
 - Choose Euclidean vs spherical rendering with per-axis wrap modes and rotation controls
 - Blend optional Voronoi (site-driven or live-cell) or Delaunay overlays using shared site controls for hybrid visualizations
 - Edit the Life rule matrix directly, copy the `B/S` rule string, and reset to defaults when needed
-- Resize the automaton using the cell-size slider, collapse or expand control groups, and Ctrl-click cells to open history panels with age-based colour swatches per generation
+- Resize the automaton using the cell-size slider, collapse or expand control groups, and Shift-click cells to open history panels with age-based colour swatches per generation
 
 ### Lindenmayer System Explorer
 - Edit the axiom and production rules via text areas with instant redraws
