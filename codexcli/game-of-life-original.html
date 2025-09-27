@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<!-- saved from url=(0055)file:///D:/projects5/mwt/ai/codex-cli/game-of-life.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life Studio</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: radial-gradient(circle at top, #0a101d, #0a1328 55%, #040712 100%);
+        color: #e6ecff;
+      }
+
+      header {
+        padding: 1.6rem clamp(1.5rem, 4vw, 3rem) 0.5rem;
+        text-align: center;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: clamp(1.9rem, 4.5vw, 2.9rem);
+        letter-spacing: 0.06em;
+      }
+
+      header p {
+        margin: 0.4rem 0 0;
+        font-size: clamp(1rem, 2.5vw, 1.2rem);
+        opacity: 0.75;
+      }
+
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: clamp(1rem, 4vw, 2rem);
+        padding: clamp(1rem, 4vw, 2rem);
+      }
+
+      .stage {
+        width: min(960px, 90vw);
+        background: rgba(15, 32, 63, 0.4);
+        border-radius: 20px;
+        box-shadow: 0 26px 60px -38px rgba(0, 0, 0, 0.8);
+        border: 1px solid rgba(120, 173, 255, 0.2);
+        padding: clamp(1rem, 3vw, 1.6rem);
+        backdrop-filter: blur(14px);
+        display: grid;
+        gap: clamp(1rem, 3vw, 1.5rem);
+      }
+
+      canvas {
+        width: 100%;
+        height: auto;
+        border-radius: 14px;
+        background: radial-gradient(circle at 30% 25%, rgba(33, 63, 120, 0.45), rgba(7, 13, 28, 0.92) 60%, rgba(3, 6, 18, 1) 100%);
+        image-rendering: auto;
+        touch-action: none;
+        cursor: crosshair;
+      }
+
+      canvas.dragging {
+        cursor: grabbing;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .controls button,
+      .controls label {
+        background: rgba(22, 72, 155, 0.26);
+        border: 1px solid rgba(137, 190, 255, 0.45);
+        border-radius: 999px;
+        color: inherit;
+        padding: 0.55rem 1.1rem;
+        font-size: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        backdrop-filter: blur(8px);
+      }
+
+      .controls button {
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+
+      .controls button:hover {
+        background: rgba(46, 124, 255, 0.4);
+        transform: translateY(-1px);
+      }
+
+      .controls button:active {
+        transform: translateY(0);
+      }
+
+      .controls label input {
+        accent-color: #7db7ff;
+      }
+
+      .stats {
+        text-align: center;
+        font-size: 0.95rem;
+        color: rgba(209, 224, 255, 0.75);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: rgba(29, 116, 255, 0.18);
+        border: 1px solid rgba(125, 181, 255, 0.38);
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Conway's Game of Life Studio</h1>
+      <p>Sketch your own patterns, then let the automaton dance. Click to paint, drag to sculpt.</p>
+    </header>
+    <main>
+      <section class="stage">
+        <canvas id="board" width="960" height="600" aria-label="Game of Life grid" class=""></canvas>
+        <div class="controls">
+          <button type="button" id="play-toggle">Pause</button>
+          <button type="button" id="step">Step</button>
+          <button type="button" id="randomise">Randomise</button>
+          <button type="button" id="add-glider">Add Glider</button>
+          <button type="button" id="clear">Clear</button>
+          <label for="speed">
+            Speed
+            <input id="speed" type="range" min="1" max="30" value="8">
+            <span id="speed-value" class="badge">8 fps</span>
+          </label>
+        </div>
+        <div class="stats">
+          <span class="badge" id="generation">Generation: 230</span>
+          <span class="badge" id="population">Population: 162</span>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const canvas = document.getElementById('board');
+      const ctx = canvas.getContext('2d');
+      const playToggle = document.getElementById('play-toggle');
+      const stepButton = document.getElementById('step');
+      const randomiseButton = document.getElementById('randomise');
+      const gliderButton = document.getElementById('add-glider');
+      const clearButton = document.getElementById('clear');
+      const speedSlider = document.getElementById('speed');
+      const speedValue = document.getElementById('speed-value');
+      const generationBadge = document.getElementById('generation');
+      const populationBadge = document.getElementById('population');
+
+      const CELL_SIZE = 12;
+      const COLS = Math.floor(canvas.width / CELL_SIZE);
+      const ROWS = Math.floor(canvas.height / CELL_SIZE);
+      const ALIVE = 1;
+      const DEAD = 0;
+
+      let bufferA = new Uint8Array(COLS * ROWS);
+      let bufferB = new Uint8Array(COLS * ROWS);
+      let running = false;
+      let lastStepTime = 0;
+      let stepInterval = 1000 / Number(speedSlider.value);
+      let generation = 0;
+      let activeBuffer = bufferA;
+      let scratchBuffer = bufferB;
+      let paintValue = null;
+
+      const SPHERE_RADIUS = Math.min(canvas.width, canvas.height) * 0.45;
+      const SPHERE_CENTER = { x: canvas.width / 2, y: canvas.height / 2 };
+      const LIGHT_DIRECTION = normalizeVec({ x: 0.35, y: 0.7, z: 0.4 });
+      let sphereYaw = Math.PI / 6;
+      let spherePitch = -0.3;
+      let isRotating = false;
+      let rotationStart = null;
+      const ROTATE_SENSITIVITY = 0.005;
+
+      draw();
+      requestAnimationFrame(loop);
+
+      playToggle.addEventListener('click', () => {
+        running = !running;
+        playToggle.textContent = running ? 'Pause' : 'Play';
+      });
+
+      stepButton.addEventListener('click', () => {
+        if (!running) {
+          step();
+          draw();
+        }
+      });
+
+      randomiseButton.addEventListener('click', () => {
+        fillRandom();
+        generation = 0;
+        updateStats();
+        draw();
+      });
+
+      gliderButton.addEventListener('click', () => {
+        addGlider();
+      });
+
+      clearButton.addEventListener('click', () => {
+        activeBuffer.fill(DEAD);
+        scratchBuffer.fill(DEAD);
+        generation = 0;
+        updateStats();
+        draw();
+      });
+
+      speedSlider.addEventListener('input', () => {
+        const fps = Number(speedSlider.value);
+        stepInterval = 1000 / fps;
+        speedValue.textContent = fps + ' fps';
+      });
+
+      canvas.addEventListener('pointerdown', (event) => {
+        const rotateMode = event.button === 1 || event.button === 2 || event.altKey;
+        if (rotateMode) {
+          isRotating = true;
+          rotationStart = {
+            x: event.clientX,
+            y: event.clientY,
+            yaw: sphereYaw,
+            pitch: spherePitch,
+          };
+          canvas.setPointerCapture(event.pointerId);
+          canvas.classList.add('dragging');
+          event.preventDefault();
+          return;
+        }
+
+        if (event.button !== 0) {
+          return;
+        }
+
+        const cell = pickCell(event);
+        if (!cell) {
+          return;
+        }
+        const index = cellIndex(cell.col, cell.row);
+        const next = activeBuffer[index] === ALIVE ? DEAD : ALIVE;
+        paintValue = next;
+        activeBuffer[index] = paintValue;
+        canvas.setPointerCapture(event.pointerId);
+        canvas.classList.add('dragging');
+        generation = 0;
+        updateStats();
+        draw();
+        event.preventDefault();
+      });
+
+      canvas.addEventListener('pointermove', (event) => {
+        if (isRotating && rotationStart) {
+          const dx = (event.clientX - rotationStart.x) * ROTATE_SENSITIVITY;
+          const dy = (event.clientY - rotationStart.y) * ROTATE_SENSITIVITY;
+          sphereYaw = rotationStart.yaw + dx;
+          const maxPitch = Math.PI / 2 - 0.05;
+          spherePitch = clamp(rotationStart.pitch + dy, -maxPitch, maxPitch);
+          draw();
+          return;
+        }
+
+        if (paintValue === null) {
+          return;
+        }
+        const cell = pickCell(event);
+        if (!cell) {
+          return;
+        }
+        const index = cellIndex(cell.col, cell.row);
+        if (activeBuffer[index] !== paintValue) {
+          activeBuffer[index] = paintValue;
+          generation = 0;
+          updateStats();
+          draw();
+        }
+      });
+
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach((type) => {
+        canvas.addEventListener(type, (event) => {
+          if (paintValue !== null || isRotating) {
+            canvas.releasePointerCapture?.(event.pointerId);
+            canvas.classList.remove('dragging');
+          }
+          if (paintValue !== null) {
+            paintValue = null;
+          }
+          if (isRotating) {
+            isRotating = false;
+            rotationStart = null;
+          }
+        });
+      });
+
+      canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+
+      function loop(timestamp) {
+        if (running) {
+          if (timestamp - lastStepTime >= stepInterval) {
+            step();
+            draw();
+            lastStepTime = timestamp;
+          }
+        } else {
+          lastStepTime = timestamp;
+        }
+        requestAnimationFrame(loop);
+      }
+
+      function fillRandom() {
+        for (let index = 0; index < activeBuffer.length; index += 1) {
+          activeBuffer[index] = Math.random() > 0.72 ? ALIVE : DEAD;
+        }
+        scratchBuffer.fill(DEAD);
+      }
+
+      function addGlider() {
+        const anchor = cellFromCanvasCoords(SPHERE_CENTER.x, SPHERE_CENTER.y);
+        if (!anchor) {
+          return;
+        }
+        // Drop the pattern on the cell facing the viewer.
+        const pattern = [
+          { dx: 0, dy: -1 },
+          { dx: 1, dy: 0 },
+          { dx: -1, dy: 1 },
+          { dx: 0, dy: 1 },
+          { dx: 1, dy: 1 },
+        ];
+        for (const { dx, dy } of pattern) {
+          const col = wrapIndex(anchor.col + dx, COLS);
+          const row = wrapIndex(anchor.row + dy, ROWS);
+          activeBuffer[cellIndex(col, row)] = ALIVE;
+        }
+        generation = 0;
+        updateStats();
+        draw();
+      }
+
+      function pickCell(event) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const canvasX = (event.clientX - rect.left) * scaleX;
+        const canvasY = (event.clientY - rect.top) * scaleY;
+        return cellFromCanvasCoords(canvasX, canvasY);
+      }
+
+      function cellFromCanvasCoords(canvasX, canvasY) {
+        // Map canvas coordinates to the spherical grid.
+        const localX = canvasX - SPHERE_CENTER.x;
+        const localY = SPHERE_CENTER.y - canvasY;
+        const radiusSq = SPHERE_RADIUS * SPHERE_RADIUS;
+        const distSq = localX * localX + localY * localY;
+        if (distSq > radiusSq) {
+          return null;
+        }
+        const z = Math.sqrt(Math.max(0, radiusSq - distSq));
+        const rotatedPoint = { x: localX, y: localY, z };
+        const basePoint = inverseRotatePoint(rotatedPoint, sphereYaw, spherePitch);
+        const lat = Math.asin(clamp(basePoint.y / SPHERE_RADIUS, -1, 1));
+        let lon = Math.atan2(basePoint.z, basePoint.x);
+        if (lon < 0) {
+          lon += Math.PI * 2;
+        }
+        const col = Math.min(
+          COLS - 1,
+          Math.max(0, Math.floor((lon / (Math.PI * 2)) * COLS))
+        );
+        const row = Math.min(
+          ROWS - 1,
+          Math.max(0, Math.floor(((lat + Math.PI / 2) / Math.PI) * ROWS))
+        );
+        return { col, row };
+      }
+
+      function step() {
+        for (let row = 0; row < ROWS; row += 1) {
+          for (let col = 0; col < COLS; col += 1) {
+            const index = cellIndex(col, row);
+            const aliveNeighbours = countNeighbours(col, row);
+            const cellState = activeBuffer[index];
+            scratchBuffer[index] = cellState;
+            if (cellState === ALIVE) {
+              scratchBuffer[index] = aliveNeighbours === 2 || aliveNeighbours === 3 ? ALIVE : DEAD;
+            } else if (aliveNeighbours === 3) {
+              scratchBuffer[index] = ALIVE;
+            } else {
+              scratchBuffer[index] = DEAD;
+            }
+          }
+        }
+        [activeBuffer, scratchBuffer] = [scratchBuffer, activeBuffer];
+        generation += 1;
+        updateStats();
+      }
+
+      function countNeighbours(col, row) {
+        let total = 0;
+        for (let y = -1; y <= 1; y += 1) {
+          for (let x = -1; x <= 1; x += 1) {
+            if (x === 0 && y === 0) {
+              continue;
+            }
+            const neighbourCol = wrapIndex(col + x, COLS);
+            const neighbourRow = wrapIndex(row + y, ROWS);
+            total += activeBuffer[cellIndex(neighbourCol, neighbourRow)];
+          }
+        }
+        return total;
+      }
+
+      function wrapIndex(value, max) {
+        if (value < 0) {
+          return max + value;
+        }
+        if (value >= max) {
+          return value - max;
+        }
+        return value;
+      }
+
+      function cellIndex(col, row) {
+        return row * COLS + col;
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const glow = ctx.createRadialGradient(
+          SPHERE_CENTER.x - SPHERE_RADIUS * 0.2,
+          SPHERE_CENTER.y - SPHERE_RADIUS * 0.4,
+          SPHERE_RADIUS * 0.3,
+          SPHERE_CENTER.x,
+          SPHERE_CENTER.y,
+          SPHERE_RADIUS * 1.15
+        );
+        glow.addColorStop(0, 'rgba(82, 139, 255, 0.25)');
+        glow.addColorStop(1, 'rgba(6, 10, 24, 0.95)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(SPHERE_CENTER.x, SPHERE_CENTER.y, SPHERE_RADIUS + 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        const tiles = [];
+        let population = 0;
+
+        for (let row = 0; row < ROWS; row += 1) {
+          const lat0 = Math.PI * (row / ROWS) - Math.PI / 2;
+          const lat1 = Math.PI * ((row + 1) / ROWS) - Math.PI / 2;
+          for (let col = 0; col < COLS; col += 1) {
+            const lon0 = (Math.PI * 2 * col) / COLS - Math.PI;
+            const lon1 = (Math.PI * 2 * (col + 1)) / COLS - Math.PI;
+            const centerLat = (lat0 + lat1) * 0.5;
+            const centerLon = (lon0 + lon1) * 0.5;
+
+            const corners = [
+              rotatePoint(sphericalToCartesian(lat0, lon0)),
+              rotatePoint(sphericalToCartesian(lat0, lon1)),
+              rotatePoint(sphericalToCartesian(lat1, lon1)),
+              rotatePoint(sphericalToCartesian(lat1, lon0)),
+            ];
+            const centerPoint = rotatePoint(sphericalToCartesian(centerLat, centerLon));
+            if (centerPoint.z < 0) {
+              continue;
+            }
+
+            const normal = normalizeVec(
+              crossVec(
+                subtractVec(corners[1], corners[0]),
+                subtractVec(corners[3], corners[0])
+              )
+            );
+            const light = Math.max(0, dotVec(normal, LIGHT_DIRECTION));
+            const shading = clamp(light * 0.85 + 0.15, 0.2, 1);
+
+            const index = cellIndex(col, row);
+            const alive = activeBuffer[index] === ALIVE;
+            if (alive) {
+              population += 1;
+            }
+
+            const fillColor = alive
+              ? shadeColor([255, 255, 255], shading)
+              : shadeColor([28, 44, 86], shading * 0.9 + 0.1);
+            const strokeColor = alive
+              ? 'rgba(255, 255, 255, 0.55)'
+              : 'rgba(12, 20, 42, 0.45)';
+
+            tiles.push({
+              points: corners.map(projectPoint),
+              fill: fillColor,
+              stroke: strokeColor,
+              z: centerPoint.z,
+            });
+          }
+        }
+
+        tiles.sort((a, b) => a.z - b.z);
+
+        ctx.lineWidth = 0.8;
+        for (const tile of tiles) {
+          ctx.beginPath();
+          ctx.moveTo(tile.points[0].x, tile.points[0].y);
+          for (let i = 1; i < tile.points.length; i += 1) {
+            ctx.lineTo(tile.points[i].x, tile.points[i].y);
+          }
+          ctx.closePath();
+          ctx.fillStyle = tile.fill;
+          ctx.fill();
+          ctx.strokeStyle = tile.stroke;
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = 'rgba(130, 170, 255, 0.4)';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.arc(SPHERE_CENTER.x, SPHERE_CENTER.y, SPHERE_RADIUS, 0, Math.PI * 2);
+        ctx.stroke();
+
+        populationBadge.textContent = 'Population: ' + population;
+        generationBadge.textContent = 'Generation: ' + generation;
+      }
+
+      function sphericalToCartesian(lat, lon, radius = SPHERE_RADIUS) {
+        const cosLat = Math.cos(lat);
+        return {
+          x: radius * cosLat * Math.cos(lon),
+          y: radius * Math.sin(lat),
+          z: radius * cosLat * Math.sin(lon),
+        };
+      }
+
+      function rotatePoint(point, yaw = sphereYaw, pitch = spherePitch) {
+        const cosYaw = Math.cos(yaw);
+        const sinYaw = Math.sin(yaw);
+        const x1 = point.x * cosYaw + point.z * sinYaw;
+        const z1 = -point.x * sinYaw + point.z * cosYaw;
+        const y1 = point.y;
+        const cosPitch = Math.cos(pitch);
+        const sinPitch = Math.sin(pitch);
+        const y2 = y1 * cosPitch - z1 * sinPitch;
+        const z2 = y1 * sinPitch + z1 * cosPitch;
+        return { x: x1, y: y2, z: z2 };
+      }
+
+      function inverseRotatePoint(point, yaw, pitch) {
+        const cosPitch = Math.cos(pitch);
+        const sinPitch = Math.sin(pitch);
+        const y1 = point.y * cosPitch + point.z * sinPitch;
+        const z1 = -point.y * sinPitch + point.z * cosPitch;
+        const cosYaw = Math.cos(yaw);
+        const sinYaw = Math.sin(yaw);
+        const x = point.x * cosYaw - z1 * sinYaw;
+        const z = point.x * sinYaw + z1 * cosYaw;
+        return { x, y: y1, z };
+      }
+
+      function projectPoint(point) {
+        return {
+          x: SPHERE_CENTER.x + point.x,
+          y: SPHERE_CENTER.y - point.y,
+        };
+      }
+
+      function subtractVec(a, b) {
+        return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+      }
+
+      function crossVec(a, b) {
+        return {
+          x: a.y * b.z - a.z * b.y,
+          y: a.z * b.x - a.x * b.z,
+          z: a.x * b.y - a.y * b.x,
+        };
+      }
+
+      function dotVec(a, b) {
+        return a.x * b.x + a.y * b.y + a.z * b.z;
+      }
+
+      function normalizeVec(vector) {
+        const length = Math.hypot(vector.x, vector.y, vector.z) || 1;
+        return { x: vector.x / length, y: vector.y / length, z: vector.z / length };
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function shadeColor(rgb, factor) {
+        const components = rgb.map((channel) => {
+          const tinted = channel * (0.35 + 0.65 * factor) + 12;
+          return Math.round(clamp(tinted, 0, 255));
+        });
+        return 'rgb(' + components[0] + ', ' + components[1] + ', ' + components[2] + ')';
+      }
+
+      function updateStats() {
+        // Combined with draw to keep badges in sync when painting.
+      }
+    </script>
+  
+
+</body></html>

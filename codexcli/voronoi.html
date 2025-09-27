@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Spherical Voronoi</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: radial-gradient(circle at top, #0f1c2f, #061020 70%, #02060f);
+        color: #eef4ff;
+      }
+
+      header {
+        padding: 1.5rem clamp(1.5rem, 4vw, 3rem) 0.5rem;
+        text-align: center;
+      }
+
+      header h1 {
+        margin: 0 0 0.35rem;
+        font-size: clamp(1.8rem, 4vw, 2.75rem);
+        letter-spacing: 0.04em;
+      }
+
+      header p {
+        margin: 0;
+        font-size: clamp(1rem, 2.4vw, 1.25rem);
+        opacity: 0.75;
+      }
+
+      main {
+        flex: 1;
+        display: grid;
+        place-items: center;
+        padding: clamp(1rem, 4vw, 2rem);
+      }
+
+      .stage {
+        width: min(900px, 92vw);
+        aspect-ratio: 4 / 3;
+        position: relative;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(145deg, rgba(20, 42, 74, 0.55), rgba(8, 16, 32, 0.9));
+        border-radius: 20px;
+        box-shadow: 0 24px 60px -35px rgba(0, 0, 0, 0.8);
+        border: 1px solid rgba(117, 183, 255, 0.18);
+        overflow: hidden;
+      }
+
+      canvas {
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+        cursor: grab;
+      }
+
+      canvas.dragging {
+        cursor: grabbing;
+      }
+
+      .hud {
+        position: absolute;
+        inset: auto 1.5rem 1.5rem auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: flex-end;
+      }
+
+      .hud button {
+        background: rgba(14, 112, 255, 0.18);
+        color: #ebf2ff;
+        border: 1px solid rgba(134, 201, 255, 0.4);
+        border-radius: 999px;
+        padding: 0.45rem 0.85rem;
+        font-size: 0.9rem;
+        backdrop-filter: blur(12px);
+        transition: background 0.2s ease, transform 0.2s ease;
+      }
+
+      .hud button:hover {
+        background: rgba(33, 148, 255, 0.4);
+        transform: translateY(-1px);
+      }
+
+      .hud button:active {
+        transform: translateY(0);
+      }
+
+      .hud .rotate-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.35rem;
+      }
+
+      .hud .rotate-grid button {
+        padding: 0.35rem 0.65rem;
+      }
+
+      footer {
+        padding: 1rem;
+        text-align: center;
+        font-size: 0.9rem;
+        color: rgba(200, 216, 255, 0.7);
+      }
+
+      code {
+        background: rgba(15, 65, 158, 0.35);
+        padding: 0.15rem 0.45rem;
+        border-radius: 0.45rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Voronoi Globe Playground</h1>
+      <p>Drag points to reshape the tessellation. Drag the globe or use the controls to orbit.</p>
+    </header>
+    <main>
+      <div class="stage">
+        <canvas id="globe" width="900" height="675" role="img" aria-label="Interactive spherical Voronoi diagram"></canvas>
+        <div class="hud">
+          <div class="rotate-grid" role="group" aria-label="Rotate globe">
+            <span></span>
+            <button type="button" data-rotate="up">Tilt Up</button>
+            <span></span>
+            <button type="button" data-rotate="left">Spin Left</button>
+            <button type="button" id="reset-globe">Reset View</button>
+            <button type="button" data-rotate="right">Spin Right</button>
+            <span></span>
+            <button type="button" data-rotate="down">Tilt Down</button>
+            <span></span>
+          </div>
+          <button type="button" id="shuffle-nodes">Randomise Nodes</button>
+        </div>
+      </div>
+    </main>
+    <footer>
+      Tip: double-click the globe to scatter fresh nodes. Drag anywhere away from a node to rotate. Use <code>Reset View</code> if you lose your bearings.
+    </footer>
+
+    <script type="module">
+      import { geoOrthographic, geoPath, geoGraticule10 } from "https://cdn.jsdelivr.net/npm/d3-geo@3/+esm";
+      import { geoVoronoi } from "https://cdn.jsdelivr.net/npm/d3-geo-voronoi@1/+esm";
+
+      const canvas = document.getElementById('globe');
+      const context = canvas.getContext('2d');
+      const hudButtons = document.querySelectorAll('[data-rotate]');
+      const resetViewButton = document.getElementById('reset-globe');
+      const shuffleButton = document.getElementById('shuffle-nodes');
+
+      const POINT_COUNT = 16;
+      const NODE_RADIUS = 10;
+      const HIT_RADIUS = 18;
+      const ROTATE_STEP = 12;
+      const ROTATE_SENSITIVITY = 0.35;
+      const DEG2RAD = Math.PI / 180;
+      const sphere = { type: 'Sphere' };
+      const graticule = geoGraticule10();
+
+      let dragMode = null;
+      let activeIndex = null;
+      let startRotation = [0, 0, 0];
+      let origin = { x: 0, y: 0 };
+
+      const projection = geoOrthographic();
+      const path = geoPath(projection, context);
+
+      setupCanvas();
+      window.addEventListener('resize', () => {
+        setupCanvas();
+        render();
+      });
+
+      let points = makePoints(POINT_COUNT);
+      render();
+
+      canvas.addEventListener('pointerdown', handlePointerDown);
+      canvas.addEventListener('pointermove', handlePointerMove);
+      canvas.addEventListener('pointerup', clearInteraction);
+      canvas.addEventListener('pointercancel', clearInteraction);
+      canvas.addEventListener('dblclick', () => {
+        points = makePoints(points.length);
+        render();
+      });
+
+      hudButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const direction = button.getAttribute('data-rotate');
+          rotateGlobe(direction);
+        });
+      });
+
+      resetViewButton.addEventListener('click', () => {
+        projection.rotate([0, 0, 0]);
+        render();
+      });
+
+      shuffleButton.addEventListener('click', () => {
+        points = makePoints(points.length);
+        render();
+      });
+
+      function setupCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const displayWidth = canvas.clientWidth || canvas.width;
+        const displayHeight = canvas.clientHeight || canvas.height;
+        canvas.width = displayWidth * dpr;
+        canvas.height = displayHeight * dpr;
+        if (context.resetTransform) {
+          context.resetTransform();
+        } else {
+          context.setTransform(1, 0, 0, 1, 0, 0);
+        }
+        context.scale(dpr, dpr);
+        projection
+          .translate([displayWidth / 2, displayHeight / 2])
+          .scale(Math.min(displayWidth, displayHeight) * 0.47);
+      }
+
+      function makePoints(count) {
+        return Array.from({ length: count }, function (_, index) {
+          return {
+            lon: Math.random() * 360 - 180,
+            lat: Math.random() * 180 - 90,
+            color: colorFromIndex(index, count),
+          };
+        });
+      }
+
+      function colorFromIndex(index, total) {
+        const hue = Math.round((index / total) * 360);
+        return 'hsl(' + hue + ' 70% 60%)';
+      }
+
+      function handlePointerDown(event) {
+        const coords = getCanvasPoint(event);
+        const hitIndex = hitTest(coords);
+        if (hitIndex !== -1) {
+          dragMode = 'node';
+          activeIndex = hitIndex;
+          canvas.classList.add('dragging');
+        } else if (insideGlobe(coords)) {
+          dragMode = 'rotate';
+          startRotation = projection.rotate();
+          origin = coords;
+          canvas.classList.add('dragging');
+        } else {
+          dragMode = null;
+          activeIndex = null;
+          return;
+        }
+
+        canvas.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      }
+
+      function handlePointerMove(event) {
+        if (!dragMode) {
+          return;
+        }
+
+        const coords = getCanvasPoint(event);
+        if (dragMode === 'node') {
+          moveNode(coords);
+        } else if (dragMode === 'rotate') {
+          dragRotate(coords);
+        }
+      }
+
+      function moveNode(coords) {
+        const geo = projection.invert([coords.x, coords.y]);
+        if (!geo) {
+          return;
+        }
+
+        const lon = wrapLongitude(geo[0]);
+        const lat = Math.max(-89.9, Math.min(89.9, geo[1]));
+        points[activeIndex].lon = lon;
+        points[activeIndex].lat = lat;
+        render();
+      }
+
+      function dragRotate(coords) {
+        const dx = coords.x - origin.x;
+        const dy = coords.y - origin.y;
+        const rotation = [
+          startRotation[0] + dx * ROTATE_SENSITIVITY,
+          clamp(startRotation[1] - dy * ROTATE_SENSITIVITY, -90, 90),
+          startRotation[2] || 0,
+        ];
+        projection.rotate(rotation);
+        render();
+      }
+
+      function clearInteraction(event) {
+        if (dragMode) {
+          canvas.releasePointerCapture?.(event.pointerId);
+          dragMode = null;
+          activeIndex = null;
+          canvas.classList.remove('dragging');
+        }
+      }
+
+      function getCanvasPoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top,
+        };
+      }
+
+      function hitTest(point) {
+        let result = -1;
+        let minDistance = Number.POSITIVE_INFINITY;
+        const viewNormal = rotationToNormal(projection.rotate());
+        for (let index = 0; index < points.length; index += 1) {
+          const node = points[index];
+          if (!isPointVisible(node, viewNormal)) {
+            continue;
+          }
+          const projected = projection([node.lon, node.lat]);
+          if (!projected) {
+            continue;
+          }
+          const dx = projected[0] - point.x;
+          const dy = projected[1] - point.y;
+          const distance = Math.hypot(dx, dy);
+          if (distance <= HIT_RADIUS && distance < minDistance) {
+            minDistance = distance;
+            result = index;
+          }
+        }
+        return result;
+      }
+
+      function insideGlobe(point) {
+        const center = projection.translate();
+        const radius = projection.scale();
+        const dx = point.x - center[0];
+        const dy = point.y - center[1];
+        return Math.hypot(dx, dy) <= radius + 2;
+      }
+
+      function rotateGlobe(direction) {
+        const rotation = projection.rotate().slice();
+        if (direction === 'left') {
+          rotation[0] -= ROTATE_STEP;
+        } else if (direction === 'right') {
+          rotation[0] += ROTATE_STEP;
+        } else if (direction === 'up') {
+          rotation[1] += ROTATE_STEP;
+        } else if (direction === 'down') {
+          rotation[1] -= ROTATE_STEP;
+        }
+        rotation[1] = clamp(rotation[1], -90, 90);
+        projection.rotate(rotation);
+        render();
+      }
+
+      function wrapLongitude(value) {
+        let lon = value;
+        while (lon < -180) {
+          lon += 360;
+        }
+        while (lon > 180) {
+          lon -= 360;
+        }
+        return lon;
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+      }
+
+      function rotationToNormal(rotation) {
+        const lambda = -((rotation && rotation[0]) || 0) * DEG2RAD;
+        const phi = -((rotation && rotation[1]) || 0) * DEG2RAD;
+        const cosPhi = Math.cos(phi);
+        return {
+          x: cosPhi * Math.cos(lambda),
+          y: cosPhi * Math.sin(lambda),
+          z: Math.sin(phi),
+        };
+      }
+
+      function pointToCartesian(lon, lat) {
+        const lambda = lon * DEG2RAD;
+        const phi = lat * DEG2RAD;
+        const cosPhi = Math.cos(phi);
+        return {
+          x: cosPhi * Math.cos(lambda),
+          y: cosPhi * Math.sin(lambda),
+          z: Math.sin(phi),
+        };
+      }
+
+      function isPointVisible(point, normal) {
+        const cartesian = pointToCartesian(point.lon, point.lat);
+        return (
+          cartesian.x * normal.x +
+          cartesian.y * normal.y +
+          cartesian.z * normal.z
+        ) >= 0;
+      }
+
+      function render() {
+        const displayWidth = canvas.clientWidth || canvas.width;
+        const displayHeight = canvas.clientHeight || canvas.height;
+        context.clearRect(0, 0, displayWidth, displayHeight);
+
+        const viewNormal = rotationToNormal(projection.rotate());
+
+        context.save();
+        context.beginPath();
+        path(sphere);
+        context.fillStyle = '#0a1a33';
+        context.fill();
+        context.strokeStyle = 'rgba(112, 178, 255, 0.45)';
+        context.lineWidth = 1.4;
+        context.stroke();
+        context.restore();
+
+        context.save();
+        context.beginPath();
+        path(graticule);
+        context.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        context.lineWidth = 0.9;
+        context.stroke();
+        context.restore();
+
+        const diagram = geoVoronoi(points.map((point) => [point.lon, point.lat]));
+        const collection = diagram.polygons();
+        const features = collection.features || collection;
+
+        for (let index = 0; index < features.length; index += 1) {
+          const feature = features[index];
+          context.save();
+          context.beginPath();
+          path(feature);
+          context.fillStyle = points[index].color;
+          context.globalAlpha = 0.85;
+          context.fill('evenodd');
+          context.globalAlpha = 1;
+          context.strokeStyle = 'rgba(10, 27, 48, 0.65)';
+          context.lineWidth = 1.2;
+          context.stroke();
+          context.restore();
+        }
+
+        for (let index = 0; index < points.length; index += 1) {
+          const node = points[index];
+          if (!isPointVisible(node, viewNormal)) {
+            continue;
+          }
+          const projected = projection([node.lon, node.lat]);
+          if (!projected) {
+            continue;
+          }
+          const x = projected[0];
+          const y = projected[1];
+
+          context.beginPath();
+          context.fillStyle = 'rgba(0, 0, 0, 0.25)';
+          context.arc(x, y, NODE_RADIUS + 3, 0, Math.PI * 2);
+          context.fill();
+
+          context.beginPath();
+          context.fillStyle = node.color;
+          context.strokeStyle = 'rgba(8, 20, 38, 0.9)';
+          context.lineWidth = 2;
+          context.arc(x, y, NODE_RADIUS, 0, Math.PI * 2);
+          context.fill();
+          context.stroke();
+
+          context.beginPath();
+          context.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          context.arc(x, y, NODE_RADIUS / 2.3, 0, Math.PI * 2);
+          context.fill();
+        }
+      }
+    </script>
+  </body>
+</html>
