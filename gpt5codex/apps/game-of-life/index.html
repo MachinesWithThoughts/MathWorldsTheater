@@ -512,8 +512,15 @@
           selectedCellKey: null,
           ageColorCache: new Map(),
           theme: {
-            ageYoung: { r: 56, g: 189, b: 248 },
-            ageOld: { r: 249, g: 115, b: 22 },
+            age: {
+              young: { r: 56, g: 189, b: 248 },
+              old: { r: 249, g: 115, b: 22 },
+            },
+            overlay: {
+              name: "age",
+              young: { r: 56, g: 189, b: 248 },
+              old: { r: 249, g: 115, b: 22 },
+            },
             highlight: "rgba(148, 163, 184, 0.45)",
           },
         };
@@ -697,9 +704,42 @@
           return `rgba(${r}, ${g}, ${b}, ${alpha})`;
         }
 
+        function createGradient({ young, old }, age, maxAge = config.ageColorMax) {
+          const clampedAge = Math.min(age, maxAge);
+          const t = maxAge === 0 ? 0 : clampedAge / maxAge;
+          const r = Math.round(lerp(young.r, old.r, t));
+          const g = Math.round(lerp(young.g, old.g, t));
+          const b = Math.round(lerp(young.b, old.b, t));
+          return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        function createOverlayPalette(name) {
+          switch (name) {
+            case "rainbow":
+              return {
+                name,
+                young: { r: 244, g: 63, b: 94 },
+                old: { r: 59, g: 130, b: 246 },
+              };
+            case "reverse-rainbow":
+              return {
+                name,
+                young: { r: 59, g: 130, b: 246 },
+                old: { r: 244, g: 63, b: 94 },
+              };
+            case "age":
+            default:
+              return {
+                name: "age",
+                young: { ...state.theme.age.young },
+                old: { ...state.theme.age.old },
+              };
+          }
+        }
+
         function getOverlayColorForKey(key) {
-          const defaultFill = "rgba(56, 189, 248, 0.25)";
-          const defaultStroke = "rgba(148, 163, 184, 0.6)";
+          const defaultFill = `rgba(56, 189, 248, 0.25)`;
+          const defaultStroke = `rgba(148, 163, 184, 0.6)`;
 
           if (!key || !state.cellRecords.has(key)) {
             return {
@@ -710,7 +750,10 @@
 
           const record = state.cellRecords.get(key);
           const age = record?.age ?? 0;
-          const base = getAgeColor(age);
+          const palette = state.theme.overlay.name === "age"
+            ? { young: state.theme.age.young, old: state.theme.age.old }
+            : state.theme.overlay;
+          const base = createGradient(palette, age, config.ageColorMax);
           const alive = state.grid.has(key);
 
           return {
@@ -812,9 +855,9 @@
           }
           const clampedAge = Math.min(age, config.ageColorMax);
           const t = clampedAge / config.ageColorMax;
-          const r = Math.round(lerp(state.theme.ageYoung.r, state.theme.ageOld.r, t));
-          const g = Math.round(lerp(state.theme.ageYoung.g, state.theme.ageOld.g, t));
-          const b = Math.round(lerp(state.theme.ageYoung.b, state.theme.ageOld.b, t));
+          const r = Math.round(lerp(state.theme.age.young.r, state.theme.age.old.r, t));
+          const g = Math.round(lerp(state.theme.age.young.g, state.theme.age.old.g, t));
+          const b = Math.round(lerp(state.theme.age.young.b, state.theme.age.old.b, t));
           const color = `rgb(${r}, ${g}, ${b})`;
           state.ageColorCache.set(age, color);
           return color;
@@ -1401,6 +1444,15 @@
         simulationControlsSection.appendChild(cellSizeSlider.wrapper);
         controlStack.appendChild(simulationControls);
 
+        const seedsSectionWrapper = createControlsSection("Seeds", "Start from classic or random patterns.");
+        const seedsSection = seedsSectionWrapper.element;
+        const seedButtons = document.createElement("div");
+        seedButtons.className = "button-row";
+        seedButtons.appendChild(createButton("Glider", seedGlider));
+        seedButtons.appendChild(createButton("Random", seedRandom));
+        seedsSectionWrapper.appendChild(seedButtons);
+        controlStack.appendChild(seedsSection);
+
         const renderingSectionWrapper = createControlsSection(
           "Rendering",
           "Switch between Euclidean and spherical projections. Right-drag in spherical mode to rotate.",
@@ -1475,6 +1527,19 @@
             draw();
           },
         });
+        const overlayThemeSelect = createSelect({
+          label: "Overlay Theme",
+          options: [
+            { value: "age", label: "Match Cell Age" },
+            { value: "rainbow", label: "Rainbow" },
+            { value: "reverse-rainbow", label: "Rainbow (Reverse)" },
+          ],
+          value: state.theme.overlay.name,
+          onChange: (value) => {
+            state.theme.overlay = createOverlayPalette(value);
+            draw();
+          },
+        });
         const overlayButtons = document.createElement("div");
         overlayButtons.className = "button-row";
         overlayButtons.appendChild(createButton("Clear Overlay", () => {
@@ -1484,6 +1549,7 @@
         }));
 
         overlaySectionWrapper.appendChild(overlayModeSelect.wrapper);
+        overlaySectionWrapper.appendChild(overlayThemeSelect.wrapper);
         overlaySectionWrapper.appendChild(overlayButtons);
         controlStack.appendChild(overlaySection);
 
@@ -1587,15 +1653,6 @@
         ruleSectionWrapper.appendChild(ruleString);
         ruleSectionWrapper.appendChild(ruleActions);
         controlStack.appendChild(ruleSection);
-
-        const seedsSectionWrapper = createControlsSection("Seeds", "Start from classic or random patterns.");
-        const seedsSection = seedsSectionWrapper.element;
-        const seedButtons = document.createElement("div");
-        seedButtons.className = "button-row";
-        seedButtons.appendChild(createButton("Glider", seedGlider));
-        seedButtons.appendChild(createButton("Random", seedRandom));
-        seedsSectionWrapper.appendChild(seedButtons);
-        controlStack.appendChild(seedsSection);
 
         observeElementSize(stageInner, ({ width, height }) => {
           renderController.resize(width, height);
