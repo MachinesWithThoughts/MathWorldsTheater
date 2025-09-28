@@ -68,9 +68,14 @@ Generate a series of experimental standalone one-pager apps:
 1. [I] Move the `Seeds` section as the second configuration section on the left (**COMPLETED**: 20250928-120000)
 1. [I] Add a version number based on the current requirements section to the top of the configuration section. (**COMPLETED**: 20250928-121500)
 1. [I] the delauney triangulation does not display anything. Draw the lines from the center of the cells. (**COMPLETED**: 20250928-124200)
-
+1. [I] Change behavior of exploration mode: (**COMPLETED**: 20250928-131500)
+  - [I] Add a new option to the `Simulation Tab` called `Click Mode` (**COMPLETED**: 20250928-131500)
+        - [I] Default is to `Toggle Cell` - this should toggle a cell between being alive or dead as the mouse is pressed. (**COMPLETED**: 20250928-131500)
+        - [I] Add a mode `Explore Cells` - this will bring up the history of the cell (**COMPLETED**: 20250928-131500)
 
 ## v00.00.08 - A better library of presets for game-of-life
+
+## v00.00.09 - Add a 3d-renderer, with the height to represent the age.
 
 ------------------------------------------------------------------------------------------------
 
@@ -110,17 +115,14 @@ Generate a series of experimental standalone one-pager apps:
 - Persist per-cell generation histories, expose them through click interactions, and render a responsive detail panel anchored to the right of the stage.
 - Document new controls and visual encodings in `README.md`, add coverage in `tests/`, then mark tasks with timestamps once verified.
 
-## v00.00.08 implementation
 - Inspect the Game of Life configuration sidebar to confirm current section ordering and identify the `Seeds` block definition.
 - Adjust the ordering so the `Seeds` section renders second while preserving existing collapse state and styling hooks.
 - Validate the updated ordering across preset configurations, update documentation, and note verification steps in `tests/` prior to task completion.
 
-## v00.00.09 implementation
 - Locate the Game of Life configuration panel header construction within the shared layout utilities.
 - Surface the active requirements version (e.g., `v00.00.07`) and render it alongside the configuration title.
 - Ensure documentation and smoke tests describe the version indicator and keep task status updated after verification.
 
-## v00.00.10 implementation
 - Audit the Delaunay overlay logic to determine why triangles are not rendering for live cells.
 - Generate triangle edges using the centres of active cells and render them with appropriate styling.
 - Update README/tests to mention the visualisation change and mark the task complete once validated.

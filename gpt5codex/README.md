@@ -22,10 +22,7 @@ Interactive one-pager apps for exploring mathematical systems.
 - Blend optional Voronoi (live cells, colored or mono) or Delaunay overlays derived from active cells for hybrid visualizations
 - View Delaunay overlays as cell-centre line meshes with gradients that reflect neighbouring cell ages
 - Switch overlay colour themes (Age, Rainbow, Reverse-Rainbow) to explore alternate palettes for live-cell Voronoi and Delaunay views
-- Reference the active requirements version via the badge beside the configuration heading for quick release context
-- Access common pattern seeds directly beneath the simulation controls for quick experimentation
-- Edit the Life rule matrix directly, copy the `B/S` rule string, and reset to defaults when needed
-- Resize the automaton using the cell-size slider, collapse or expand control groups, and Shift-click cells to open history panels with age-based colour swatches per generation
+- Switch the Simulation "Click Mode" between `Toggle Cell` and `Explore Cells` to edit or inspect history with a single click
 
 ### Lindenmayer System Explorer
 - Edit the axiom and production rules via text areas with instant redraws
