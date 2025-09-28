@@ -5,9 +5,9 @@
     return;
   }
 
-  const requirementsVersion = "v00.00.07a";
+  const requirementsVersion = "v00.01.00";
 
-  function setupApp({ title, description }) {
+  function setupApp({ title, description, version = requirementsVersion }) {
     const root = document.getElementById("app");
     if (!root) {
       throw new Error("Expected #app root element to exist");
@@ -18,10 +18,21 @@
     const controlsPanel = document.createElement("aside");
     controlsPanel.className = "controls-panel";
 
+    const headingRow = document.createElement("div");
+    headingRow.className = "panel-heading";
+
     const heading = document.createElement("h1");
     heading.textContent = title;
+    headingRow.appendChild(heading);
 
-    controlsPanel.appendChild(heading);
+    if (version) {
+      const versionBadge = document.createElement("span");
+      versionBadge.className = "panel-version";
+      versionBadge.textContent = version;
+      headingRow.appendChild(versionBadge);
+    }
+
+    controlsPanel.appendChild(headingRow);
 
     if (description) {
       const desc = document.createElement("p");
@@ -44,7 +55,13 @@
     root.appendChild(controlsPanel);
     root.appendChild(stage);
 
-    return { root, controlsPanel, controlStack, stage, stageInner };
+    return {
+      root,
+      controlsPanel,
+      controlStack,
+      stage,
+      stageInner,
+    };
   }
 
   function createControlsSection(title, description, options = {}) {
@@ -312,7 +329,6 @@
   }
 
   global.MathWorldsUI = {
-    requirementsVersion,
     setupApp,
     createControlsSection,
     createButton,

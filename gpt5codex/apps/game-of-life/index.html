@@ -60,6 +60,23 @@
         box-shadow: var(--shadow-soft);
       }
 
+      .panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .panel-version {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(56, 189, 248, 0.15);
+        color: var(--accent);
+        letter-spacing: 0.02em;
+      }
+
       .controls-panel h1 {
         margin: 0;
         font-size: 24px;
@@ -524,6 +541,7 @@
           generation: 0,
           timer: null,
           dragMode: null,
+          clickMode: "toggle",
           overlay: {
             mode: "none",
             normalizedSites: [],
@@ -558,22 +576,19 @@
         let historySummary;
         let historyTimeline;
 
-        const { controlStack, stageInner, controlsPanel } = setupApp({
+        const {
+          root,
+          controlsPanel,
+          controlStack,
+          stageInner,
+        } = setupApp({
           title: "Game of Life Explorer",
           description: "Experiment with Conway's Game of Life. Tap cells to toggle, then run the simulation.",
         });
 
-        const heading = controlsPanel.querySelector("h1");
-        if (heading && requirementsVersion) {
-          const versionBadge = document.createElement("span");
-          versionBadge.className = "config-version-badge";
-          versionBadge.textContent = requirementsVersion;
-          heading.appendChild(versionBadge);
-        }
-
         const canvas = document.createElement("canvas");
         canvas.className = "render-surface";
-          stageInner.appendChild(canvas);
+        stageInner.appendChild(canvas);
 
         historyPanel = document.createElement("aside");
         historyPanel.className = "cell-history-panel";
@@ -1492,6 +1507,7 @@
 
         const simulationControlsSection = createControlsSection("Simulation", "Play, pause, or step through generations.");
         const simulationControls = simulationControlsSection.element;
+        simulationControls.classList.add("panel-home-section");
         const buttonRow = document.createElement("div");
         buttonRow.className = "button-row";
         playPauseButton = createButton("Play", toggleRunning);
@@ -1527,6 +1543,18 @@
           },
         });
         simulationControlsSection.appendChild(cellSizeSlider.wrapper);
+        const clickModeSelect = createSelect({
+          label: "Click Mode",
+          options: [
+            { value: "toggle", label: "Toggle Cell" },
+            { value: "explore", label: "Explore Cells" },
+          ],
+          value: state.clickMode,
+          onChange: (value) => {
+            state.clickMode = value;
+          },
+        });
+        simulationControlsSection.appendChild(clickModeSelect.wrapper);
         controlStack.appendChild(simulationControls);
 
         const seedsSectionWrapper = createControlsSection("Seeds", "Start from classic or random patterns.");
@@ -1756,7 +1784,7 @@
           if (!point) return;
           const coords = locateCell(point);
           if (!coords) {
-            if (event.shiftKey) {
+            if (state.clickMode === "explore") {
               event.preventDefault();
               state.selectedCellKey = null;
               updateHistoryPanel();
@@ -1767,7 +1795,7 @@
 
           const key = keyFor(coords.x, coords.y);
 
-          if (event.shiftKey) {
+          if (state.clickMode === "explore") {
             event.preventDefault();
             if (state.selectedCellKey === key) {
               state.selectedCellKey = null;
