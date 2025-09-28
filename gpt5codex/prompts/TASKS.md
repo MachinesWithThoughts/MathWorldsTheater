@@ -73,7 +73,23 @@ Generate a series of experimental standalone one-pager apps:
         - [I] Default is to `Toggle Cell` - this should toggle a cell between being alive or dead as the mouse is pressed. (**COMPLETED**: 20250928-131500)
         - [I] Add a mode `Explore Cells` - this will bring up the history of the cell (**COMPLETED**: 20250928-131500)
 
-## v00.00.08 - A better library of presets for game-of-life
+## v00.01.00 - Initial Release
+
+## v00.02.00 - A better library of presets for game-of-life
+
+1. [I] Review documentation about different Game of Life file formats:
+    - [I] https://conwaylife.com/wiki/Run_Length_Encoded descibes the RLE format. (**COMPLETED**: 20250928-143500)
+      - review `data/p100honeyfarmhassler.rle`
+    - [I] https://conwaylife.com/wiki/Plaintext describes the plain text format. (**COMPLETED**: 20250928-143500)
+      - review `data/p100honeyfarmhassler.cells`
+    - (data from https://conwaylife.com/wiki/Category:Patterns)
+1. [I] Create an option to load different pattern files:
+    - [I] Create a button `Load Pattern` in `Seeds` panel. (**COMPLETED**: 20250928-150200)
+    - [I] When loaded allow the user to place the pattern anywhere on the surface. (**COMPLETED**: 20250928-150200)
+    - [I] Truncate the shape if it's too big for the current grid. (**COMPLETED**: 20250928-150200)
+    - [I] As the user hovers, display the new shape in Green over the existing map. (**COMPLETED**: 20250928-150200)
+    - [I] Drop it where the user clicks the mouse button. (**COMPLETED**: 20250928-150200)
+1. [I] After loading a pattern, display a message next to the `Load Pattern` button saying "Press ESC to place individual cells". Once Escape is pressed, clear the message. (**COMPLETED**: 20250928-152800)
 
 ## v00.00.09 - Add a 3d-renderer, with the height to represent the age.
 
@@ -126,3 +142,12 @@ Generate a series of experimental standalone one-pager apps:
 - Audit the Delaunay overlay logic to determine why triangles are not rendering for live cells.
 - Generate triangle edges using the centres of active cells and render them with appropriate styling.
 - Update README/tests to mention the visualisation change and mark the task complete once validated.
+
+## v00.02.00 implementation
+- Capture parsing rules for RLE and Plaintext formats (headers, comments, coordinate origins, run-length semantics, end markers) and note any deviations present in bundled samples like `104p177.rle`/`.cells`.
+- Prototype a pattern ingestion module: normalize shared metadata (name, author, comments), convert format-specific bodies into a unified cell array with origin offsets. Ensure Plaintext lines map to `.`/`O` values and RLE handles `$` newlines, `!` termination, and whitespace.
+- Extend `Seeds` controls with a `Load Pattern` trigger that opens a file picker limited to `.rle`/`.cells`, reads text, and delegates to the ingestion module with clear error messaging. Surface parsed metadata (pattern name) in the UI for confirmation.
+- Introduce temporary placement state: store preview cells in a `state.patternPreview` object (shape bounds, alive offsets, intended origin) and render as a green overlay that follows the pointer. Clamp preview origin to keep the preview within grid bounds.
+- Implement truncation by filtering preview offsets that would fall outside the current grid and communicating truncation to the user (status message beneath Seeds panel).
+- On click confirmation, merge the pattern into `state.grid` at the snapped location, append history records for newly alive cells, and clear preview state.
+- Update documentation (`README.md`, smoke tests) to cover pattern loading workflow, supported formats, and truncation behaviour once validated. (**COMPLETED**: 20250928-151000)

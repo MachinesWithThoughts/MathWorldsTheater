@@ -5,7 +5,7 @@
     return;
   }
 
-  const requirementsVersion = "v00.01.00";
+  const requirementsVersion = "v00.02.01";
 
   function setupApp({ title, description, version = requirementsVersion }) {
     const root = document.getElementById("app");
