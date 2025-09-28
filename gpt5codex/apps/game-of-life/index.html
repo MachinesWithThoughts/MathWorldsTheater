@@ -206,6 +206,25 @@
         gap: 8px;
       }
 
+      .pattern-status {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.4;
+        color: var(--text-muted);
+      }
+
+      .pattern-status[data-tone="success"] {
+        color: #34d399;
+      }
+
+      .pattern-status[data-tone="warning"] {
+        color: #facc15;
+      }
+
+      .pattern-status[data-tone="error"] {
+        color: #f87171;
+      }
+
       button.control-button {
         appearance: none;
         border: 1px solid var(--control-border);
@@ -548,6 +567,8 @@
           },
           selectedCellKey: null,
           ageColorCache: new Map(),
+          patternPreview: null,
+          patternStatus: null,
           theme: {
             age: {
               young: { r: 56, g: 189, b: 248 },
@@ -575,6 +596,7 @@
         let historyTitle;
         let historySummary;
         let historyTimeline;
+        let patternStatusElement = null;
 
         const {
           root,
@@ -648,6 +670,304 @@
           const [x, y] = key.split(",").map(Number);
           return { x, y };
         }
+
+        function parsePlaintextPattern(text) {
+          const lines = text.replace(/\r\n?/g, "\n").split("\n");
+          const meta = { name: "", author: "", comments: [] };
+          const cells = [];
+          let width = 0;
+          let y = 0;
+          for (const line of lines) {
+            if (!line) {
+              if (!cells.length) {
+                continue;
+              }
+            }
+            if (line.startsWith("!")) {
+              const body = line.slice(1).trim();
+              if (body.toLowerCase().startsWith("name:")) {
+                meta.name = body.slice(5).trim();
+              } else if (body.toLowerCase().startsWith("author:")) {
+                meta.author = body.slice(7).trim();
+              } else {
+                meta.comments.push(body);
+              }
+              continue;
+            }
+            const row = [];
+            for (let x = 0; x < line.length; x += 1) {
+              const char = line[x];
+              if (char === "O" || char === "o") {
+                row.push({ x, y, alive: true });
+              } else if (char === "X" || char === "*" || char === "#") {
+                row.push({ x, y, alive: true });
+              }
+            }
+            width = Math.max(width, line.length);
+            if (row.length) {
+              cells.push(...row);
+            }
+            y += 1;
+          }
+          const height = y;
+          return {
+            meta,
+            width,
+            height,
+            cells: cells.map(({ x, y: cy }) => ({ x, y: cy })),
+          };
+        }
+
+        function parseRLEPattern(text) {
+          const normalized = text.replace(/\r\n?/g, "\n");
+          const lines = normalized.split("\n");
+          const meta = { name: "", author: "", comments: [] };
+          let headerLine = null;
+          const dataLines = [];
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed) continue;
+            if (trimmed.startsWith("#")) {
+              const type = trimmed[1];
+              const body = trimmed.slice(2).trim();
+              switch (type) {
+                case "N":
+                case "n":
+                  meta.name = body;
+                  break;
+                case "O":
+                case "o":
+                  meta.author = body;
+                  break;
+                case "C":
+                case "c":
+                case "D":
+                case "d":
+                  meta.comments.push(body);
+                  break;
+                default:
+                  break;
+              }
+            } else if (trimmed.startsWith("x")) {
+              headerLine = trimmed;
+            } else {
+              dataLines.push(trimmed);
+            }
+          }
+
+          if (!headerLine) {
+            throw new Error("Missing RLE header line");
+          }
+
+          const headerMatch = headerLine.match(/x\s*=\s*(\d+)\s*,\s*y\s*=\s*(\d+)/i);
+          const width = headerMatch ? Number(headerMatch[1]) : 0;
+          const height = headerMatch ? Number(headerMatch[2]) : 0;
+
+          const body = dataLines.join("");
+          const cells = [];
+          let x = 0;
+          let y = 0;
+          let countBuffer = "";
+
+          function flushCount(defaultValue = 1) {
+            if (!countBuffer) return defaultValue;
+            const value = Number(countBuffer);
+            countBuffer = "";
+            return Number.isFinite(value) ? value : defaultValue;
+          }
+
+          const normalised = value => Math.max(Math.min(Math.floor(value), Number.MAX_SAFE_INTEGER), 0);
+
+          for (let i = 0; i < body.length; i += 1) {
+            const char = body[i];
+            if (char >= "0" && char <= "9") {
+              countBuffer += char;
+              continue;
+            }
+            if (char === "b" || char === "B") {
+              const count = flushCount();
+              x += count;
+              continue;
+            }
+            if (char === "o" || char === "O") {
+              const count = flushCount();
+              for (let j = 0; j < count; j += 1) {
+                cells.push({ x: x + j, y });
+              }
+              x += count;
+              continue;
+            }
+            if (char === "$") {
+              const count = flushCount();
+              y += count;
+              x = 0;
+              continue;
+            }
+            if (char === "!") {
+              break;
+            }
+            if (/\s/.test(char)) {
+              continue;
+            }
+            console.warn("Unknown RLE character", char);
+          }
+
+          return {
+            meta,
+            width,
+            height: height || (cells.length ? Math.max(...cells.map((cell) => cell.y)) + 1 : 0),
+            cells,
+          };
+        }
+
+        function parsePatternFile(file) {
+          const name = file.name || "pattern";
+          const extension = name.toLowerCase().split(".").pop();
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              try {
+                const text = String(reader.result || "");
+                if (extension === "cells" || extension === "lif") {
+                  resolve({ ...parsePlaintextPattern(text), source: "plaintext" });
+                } else if (extension === "rle") {
+                  resolve({ ...parseRLEPattern(text), source: "rle" });
+                } else {
+                  reject(new Error("Unsupported pattern format"));
+                }
+              } catch (error) {
+                reject(error);
+              }
+            };
+            reader.onerror = () => reject(new Error("Failed to read file"));
+            reader.readAsText(file);
+          });
+        }
+
+        function describePattern(pattern) {
+          if (!pattern) return "";
+          const parts = [];
+          if (pattern.meta?.name) {
+            parts.push(pattern.meta.name);
+          }
+          if (pattern.meta?.author) {
+            parts.push(`by ${pattern.meta.author}`);
+          }
+          if (parts.length === 0) {
+            parts.push("Unnamed pattern");
+          }
+          parts.push(`[${pattern.width}×${pattern.height}]`);
+          return parts.join(" · ");
+        }
+
+        function setPatternStatus(message, tone = "info") {
+          state.patternStatus = { message, tone };
+          if (patternStatusElement) {
+            patternStatusElement.textContent = message;
+            patternStatusElement.dataset.tone = tone;
+            patternStatusElement.hidden = !message;
+          }
+        }
+
+        function clearPatternStatus() {
+          setPatternStatus("", "info");
+        }
+
+        function clearPatternPreview({ keepStatus = false } = {}) {
+          if (!state.patternPreview) return false;
+          state.patternPreview = null;
+          if (!keepStatus) {
+            clearPatternStatus();
+          }
+          draw();
+          return true;
+        }
+
+        function clampOrigin(origin, pattern) {
+          const maxX = config.columns - 1;
+          const maxY = config.rows - 1;
+          const offsetsX = pattern.cells.map((cell) => cell.x);
+          const offsetsY = pattern.cells.map((cell) => cell.y);
+          const width = offsetsX.length ? Math.max(...offsetsX) + 1 : 0;
+          const height = offsetsY.length ? Math.max(...offsetsY) + 1 : 0;
+          return {
+            x: clamp(origin.x, 0, Math.max(0, maxX - width + 1)),
+            y: clamp(origin.y, 0, Math.max(0, maxY - height + 1)),
+          };
+        }
+
+        function buildPreview(pattern, origin) {
+          if (!pattern) return null;
+          const clampedOrigin = clampOrigin(origin, pattern);
+          const cells = [];
+          const truncated = [];
+          for (const cell of pattern.cells) {
+            const x = clampedOrigin.x + cell.x;
+            const y = clampedOrigin.y + cell.y;
+            if (x < 0 || y < 0 || x >= config.columns || y >= config.rows) {
+              truncated.push(cell);
+              continue;
+            }
+            cells.push({ x, y });
+          }
+          return {
+            origin: clampedOrigin,
+            cells,
+            truncated,
+            pattern,
+          };
+        }
+
+        function applyPatternPreview(preview) {
+          state.patternPreview = preview;
+          if (!preview) {
+            clearPatternStatus();
+          } else if (preview.cells && preview.cells.length) {
+            const descriptor = describePattern(preview.pattern);
+            const message = preview.truncated.length
+              ? `${descriptor} preview ready (${preview.cells.length} cells, ${preview.truncated.length} truncated). Click to place.`
+              : `${descriptor} preview ready (${preview.cells.length} cells). Click to place.`;
+            if (!state.patternStatus || state.patternStatus.message !== message) {
+              setPatternStatus(message, preview.truncated.length ? "warning" : "success");
+            }
+          }
+          draw();
+        }
+
+        function mergePatternPreview() {
+          const preview = state.patternPreview;
+          if (!preview) return;
+ 
+          let placed = 0;
+          preview.cells.forEach(({ x, y }) => {
+            if (applyCellState(x, y, true)) {
+              placed += 1;
+            }
+          });
+ 
+          const truncatedCount = preview.truncated.length;
+          const descriptor = describePattern(preview.pattern);
+ 
+          state.patternPreview = {
+            pattern: preview.pattern,
+            origin: preview.origin,
+            cells: [],
+            truncated: [],
+          };
+ 
+          if (placed > 0) {
+             const message = truncatedCount
+               ? `${descriptor} placed (${placed} cells, ${truncatedCount} truncated).`
+               : `${descriptor} placed (${placed} cells).`;
+             const suffix = " Move the cursor to place again or press Esc to cancel.";
+             setPatternStatus(`${message}${suffix}`, truncatedCount ? "warning" : "success");
+           } else {
+             setPatternStatus(`${descriptor} did not change any cells. Move the cursor to reposition or press Esc to cancel.`, "warning");
+           }
+ 
+           updateHistoryPanel();
+           draw();
+         }
 
         function updateGridDimensions() {
           const controllerState = renderController.getState();
@@ -953,6 +1273,18 @@
             ctx.fillRect(left, top, drawWidth, drawHeight);
           });
 
+          if (state.patternPreview) {
+            ctx.save();
+            ctx.globalAlpha = 0.7;
+            ctx.fillStyle = "rgba(34, 197, 94, 0.6)";
+            state.patternPreview.cells.forEach(({ x, y }) => {
+              const left = x * cellWidth + paddingX;
+              const top = y * cellHeight + paddingY;
+              ctx.fillRect(left, top, drawWidth, drawHeight);
+            });
+            ctx.restore();
+          }
+
           if (state.selectedCellKey) {
             const { x: selectedX, y: selectedY } = parseKey(state.selectedCellKey);
             if (selectedX >= 0 && selectedX < config.columns && selectedY >= 0 && selectedY < config.rows) {
@@ -1248,9 +1580,13 @@
 
         function clearGrid() {
           stop();
+          const previewCleared = clearPatternPreview();
           state.grid.clear();
           state.generation = 0;
           playPauseButton.textContent = "Play";
+          if (!previewCleared) {
+            clearPatternStatus();
+          }
           draw();
         }
 
@@ -1563,7 +1899,39 @@
         seedButtons.className = "button-row";
         seedButtons.appendChild(createButton("Glider", seedGlider));
         seedButtons.appendChild(createButton("Random", seedRandom));
+        const loadPatternButton = createButton("Load Pattern", () => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = ".rle,.cells,.lif";
+          input.addEventListener("change", async () => {
+            if (!input.files || !input.files[0]) {
+              return;
+            }
+            try {
+              const pattern = await parsePatternFile(input.files[0]);
+              if (!pattern.cells.length) {
+                setPatternStatus("Pattern contains no live cells.", "error");
+                state.patternPreview = null;
+                draw();
+                return;
+              }
+              const preview = buildPreview(pattern, { x: Math.floor(config.columns / 2), y: Math.floor(config.rows / 2) });
+              applyPatternPreview(preview);
+            } catch (error) {
+              console.error(error);
+              setPatternStatus(error.message || "Failed to load pattern.", "error");
+              state.patternPreview = null;
+              draw();
+            }
+          });
+          input.click();
+        });
+        seedButtons.appendChild(loadPatternButton);
         seedsSectionWrapper.appendChild(seedButtons);
+        patternStatusElement = document.createElement("p");
+        patternStatusElement.className = "pattern-status";
+        patternStatusElement.hidden = true;
+        seedsSectionWrapper.appendChild(patternStatusElement);
         controlStack.appendChild(seedsSection);
 
         const renderingSectionWrapper = createControlsSection(
@@ -1795,15 +2163,26 @@
 
           const key = keyFor(coords.x, coords.y);
 
+          if (state.patternPreview) {
+            event.preventDefault();
+            const preview = buildPreview(state.patternPreview.pattern, coords);
+            applyPatternPreview(preview);
+            mergePatternPreview();
+            return;
+          }
+
           if (state.clickMode === "explore") {
             event.preventDefault();
             if (state.selectedCellKey === key) {
               state.selectedCellKey = null;
+              updateHistoryPanel();
+              clearPatternStatus();
             } else {
               state.selectedCellKey = key;
               getCellRecord(key);
+              updateHistoryPanel();
+              clearPatternStatus();
             }
-            updateHistoryPanel();
             draw();
             return;
           }
@@ -1818,6 +2197,8 @@
             state.selectedCellKey = key;
           } else if (state.selectedCellKey === key) {
             state.selectedCellKey = null;
+            updateHistoryPanel();
+            clearPatternStatus();
           }
           updateHistoryPanel();
           draw();
@@ -1828,8 +2209,15 @@
           if (handleOverlayPointerMove(event)) {
             return;
           }
-          if (!state.dragMode) return;
           const point = renderController.mapEventToScene(event);
+          if (state.patternPreview) {
+            if (!point) return;
+            const coords = locateCell(point);
+            if (!coords) return;
+            applyPatternPreview(buildPreview(state.patternPreview.pattern, coords));
+            return;
+          }
+          if (!state.dragMode) return;
           if (!point) return;
           const coords = locateCell(point);
           if (!coords) return;
@@ -1863,6 +2251,13 @@
         canvas.addEventListener("pointerleave", endPaint);
 
         draw();
+
+        window.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && state.patternPreview) {
+            event.preventDefault();
+            clearPatternPreview();
+          }
+        });
       })(window);
     </script>
   </body>
