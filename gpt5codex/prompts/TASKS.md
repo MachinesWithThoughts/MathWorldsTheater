@@ -54,12 +54,22 @@ Generate a series of experimental standalone one-pager apps:
 1. [I] for the history, also display a small square to show the color corresponding to its age (**COMPLETED**: 20250927-160650)
 1. [I] use shift-click to toggle the history (**COMPLETED**: 20250927-160650)
 
-## v00.00.06 - fix Voronoi
+## v00.00.06 - fix Voronoi for game-of-life
 
 1. [I] Remove the `Voronoi (sites)` option. (**COMPLETED**: 20250927-161400)
 2. [I] The `Delaunay` option should work with the cells, similar to `Voronoi (Live Cells)` (**COMPLETED**: 20250927-161400)
 3. [I] Add a `Voronoi (Live Cells) Colored` option. (**COMPLETED**: 20250927-161400)
- 
+
+## v00.00.07 - ui tweaks for game-of-life
+
+1. [I] Separate the color schemes for coloring the Cell Age and the Voronoi Age. (**COMPLETED**: 20250927-163200)
+1. [I] Add some additional themes, include Rainbow and Reverse-Rainbow. (**COMPLETED**: 20250927-163200)
+1. [I] Move the seeds to the second place. (**COMPLETED**: 20250927-163200)
+1. [I] Move the `Seeds` section as the second configuration section on the left (**COMPLETED**: 20250928-120000)
+
+
+## v00.00.08 - A better library of presets for game-of-life
+
 ------------------------------------------------------------------------------------------------
 
 # Implementation Notes
@@ -97,3 +107,8 @@ Generate a series of experimental standalone one-pager apps:
 - Add age tracking to the simulation loop, render a perceptual gradient keyed to cell age, and surface a legend if needed in the UI.
 - Persist per-cell generation histories, expose them through click interactions, and render a responsive detail panel anchored to the right of the stage.
 - Document new controls and visual encodings in `README.md`, add coverage in `tests/`, then mark tasks with timestamps once verified.
+
+## v00.00.08 implementation
+- Inspect the Game of Life configuration sidebar to confirm current section ordering and identify the `Seeds` block definition.
+- Adjust the ordering so the `Seeds` section renders second while preserving existing collapse state and styling hooks.
+- Validate the updated ordering across preset configurations, update documentation, and note verification steps in `tests/` prior to task completion.
