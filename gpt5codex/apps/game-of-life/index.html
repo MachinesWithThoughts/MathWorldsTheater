@@ -64,6 +64,24 @@
         margin: 0;
         font-size: 24px;
         font-weight: 600;
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+
+      .config-version-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--accent);
+        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        border-radius: 999px;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
       }
 
       .controls-panel p.description {
@@ -473,6 +491,7 @@
     <script>
       (function (global) {
         const {
+          requirementsVersion,
           setupApp,
           createControlsSection,
           createButton,
@@ -539,10 +558,18 @@
         let historySummary;
         let historyTimeline;
 
-        const { controlStack, stageInner } = setupApp({
+        const { controlStack, stageInner, controlsPanel } = setupApp({
           title: "Game of Life Explorer",
           description: "Experiment with Conway's Game of Life. Tap cells to toggle, then run the simulation.",
         });
+
+        const heading = controlsPanel.querySelector("h1");
+        if (heading && requirementsVersion) {
+          const versionBadge = document.createElement("span");
+          versionBadge.className = "config-version-badge";
+          versionBadge.textContent = requirementsVersion;
+          heading.appendChild(versionBadge);
+        }
 
         const canvas = document.createElement("canvas");
         canvas.className = "render-surface";
@@ -949,12 +976,13 @@
 
           let points;
           if (state.overlay.mode === "voronoi-live" || state.overlay.mode === "voronoi-live-colored" || state.overlay.mode === "delaunay") {
-            points = Array.from(state.grid).map((key) => {
+            points = Array.from(state.grid).map((key, index) => {
               const [col, row] = key.split(",").map(Number);
               return {
                 x: (col + 0.5) * (width / config.columns),
                 y: (row + 0.5) * (height / config.rows),
                 key,
+                index,
               };
             });
           } else {
@@ -994,22 +1022,59 @@
             });
             ctx.restore();
           } else if (state.overlay.mode === "delaunay") {
-            const triangles = triangulateDelaunay(points, width, height);
+            const triangles = triangulateDelaunay(points);
+            if (triangles.length) {
+              const edgeMap = new Map();
+
+              const registerEdge = (indexA, indexB) => {
+                if (indexA == null || indexB == null) {
+                  return;
+                }
+                const low = Math.min(indexA, indexB);
+                const high = Math.max(indexA, indexB);
+                const key = `${low}-${high}`;
+                if (!edgeMap.has(key)) {
+                  edgeMap.set(key, [low, high]);
+                }
+              };
+
+              triangles.forEach(([a, b, c]) => {
+                registerEdge(a, b);
+                registerEdge(b, c);
+                registerEdge(c, a);
+              });
+
+              ctx.save();
+              ctx.lineWidth = Math.max(1.5, Math.min(width, height) * 0.003);
+              ctx.lineCap = "round";
+
+              edgeMap.forEach(([indexA, indexB]) => {
+                const source = points[indexA];
+                const target = points[indexB];
+                if (!source || !target) return;
+                const startColor = getOverlayColorForKey(source.key).stroke;
+                const endColor = getOverlayColorForKey(target.key).stroke;
+                const gradient = ctx.createLinearGradient(source.x, source.y, target.x, target.y);
+                gradient.addColorStop(0, startColor);
+                gradient.addColorStop(1, endColor);
+
+                ctx.beginPath();
+                ctx.strokeStyle = gradient;
+                ctx.moveTo(source.x, source.y);
+                ctx.lineTo(target.x, target.y);
+                ctx.stroke();
+              });
+
+              ctx.restore();
+            }
+
             ctx.save();
-            ctx.globalAlpha = 0.7;
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = "rgba(56, 189, 248, 0.55)";
-            ctx.fillStyle = "rgba(14, 165, 233, 0.12)";
-            triangles.forEach((triangle) => {
-              const { a, b, c, index: keyIndex } = triangle;
-              const color = getOverlayColorForKey(points[keyIndex]?.key);
+            ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
+            ctx.strokeStyle = "rgba(148, 163, 184, 0.65)";
+            ctx.lineWidth = 1;
+            points.forEach((point) => {
               ctx.beginPath();
-              ctx.moveTo(a.x, a.y);
-              ctx.lineTo(b.x, b.y);
-              ctx.lineTo(c.x, c.y);
-              ctx.closePath();
-              ctx.fillStyle = color.fill;
-              ctx.strokeStyle = color.stroke;
+              ctx.arc(point.x, point.y, Math.max(2, Math.min(width, height) * 0.004), 0, Math.PI * 2);
               ctx.fill();
               ctx.stroke();
             });
@@ -1301,79 +1366,99 @@
         function triangulateDelaunay(points) {
           if (points.length < 3) return [];
 
-          const normalized = points.map((site, index) => ({ x: site.x, y: site.y, index }));
+          const baseVertices = points.map((site, index) => ({ x: site.x, y: site.y, index }));
 
-          const superTriangle = [
-            { x: -10, y: -10 },
-            { x: 10, y: -10 },
-            { x: 0, y: 10 },
+          let minX = baseVertices[0].x;
+          let minY = baseVertices[0].y;
+          let maxX = baseVertices[0].x;
+          let maxY = baseVertices[0].y;
+          for (let i = 1; i < baseVertices.length; i += 1) {
+            const { x, y } = baseVertices[i];
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+
+          const dx = maxX - minX;
+          const dy = maxY - minY;
+          const deltaMax = Math.max(dx, dy) || 1;
+          const midX = (minX + maxX) / 2;
+          const midY = (minY + maxY) / 2;
+
+          const superOffset = baseVertices.length;
+          const superVertices = [
+            { x: midX - 2 * deltaMax, y: midY - deltaMax, index: superOffset },
+            { x: midX, y: midY + 2 * deltaMax, index: superOffset + 1 },
+            { x: midX + 2 * deltaMax, y: midY - deltaMax, index: superOffset + 2 },
           ];
 
-          const triangles = [{
-            a: superTriangle[0],
-            b: superTriangle[1],
-            c: superTriangle[2],
-            index: null,
-          }];
+          const allVertices = baseVertices.concat(superVertices);
 
-          function pointInCircumcircle(triangle, point) {
-            const { a, b, c } = triangle;
-            const ax = a.x - point.x;
-            const ay = a.y - point.y;
-            const bx = b.x - point.x;
-            const by = b.y - point.y;
-            const cx = c.x - point.x;
-            const cy = c.y - point.y;
+          const triangles = [{ a: superOffset, b: superOffset + 1, c: superOffset + 2 }];
+
+          function pointInCircumcircle(triangle, vertex) {
+            const a = allVertices[triangle.a];
+            const b = allVertices[triangle.b];
+            const c = allVertices[triangle.c];
+            const ax = a.x - vertex.x;
+            const ay = a.y - vertex.y;
+            const bx = b.x - vertex.x;
+            const by = b.y - vertex.y;
+            const cx = c.x - vertex.x;
+            const cy = c.y - vertex.y;
             const det = (ax * ax + ay * ay) * (bx * cy - by * cx)
               - (bx * bx + by * by) * (ax * cy - ay * cx)
               + (cx * cx + cy * cy) * (ax * by - ay * bx);
             return det > 0;
           }
 
-          function edgesMatch(e1, e2) {
-            return (
-              (e1[0].x === e2[1].x && e1[0].y === e2[1].y && e1[1].x === e2[0].x && e1[1].y === e2[0].y)
-              || (e1[0].x === e2[0].x && e1[0].y === e2[0].y && e1[1].x === e2[1].x && e1[1].y === e2[1].y)
-            );
+          function edgeKey(i1, i2) {
+            return i1 < i2 ? `${i1}-${i2}` : `${i2}-${i1}`;
           }
 
-          normalized.forEach((point) => {
+          baseVertices.forEach((vertex) => {
+            const vertexIndex = vertex.index;
+
             const badTriangles = [];
             for (let i = triangles.length - 1; i >= 0; i -= 1) {
-              if (pointInCircumcircle(triangles[i], point)) {
+              if (pointInCircumcircle(triangles[i], vertex)) {
                 badTriangles.push(triangles[i]);
                 triangles.splice(i, 1);
               }
             }
 
-            const edgeBuffer = [];
+            const boundary = new Map();
             badTriangles.forEach((triangle) => {
-              edgeBuffer.push([triangle.a, triangle.b]);
-              edgeBuffer.push([triangle.b, triangle.c]);
-              edgeBuffer.push([triangle.c, triangle.a]);
+              const edges = [
+                [triangle.a, triangle.b],
+                [triangle.b, triangle.c],
+                [triangle.c, triangle.a],
+              ];
+              edges.forEach(([from, to]) => {
+                const key = edgeKey(from, to);
+                if (boundary.has(key)) {
+                  boundary.delete(key);
+                } else {
+                  boundary.set(key, [from, to]);
+                }
+              });
             });
 
-            const boundaryEdges = edgeBuffer.filter((edge, index, array) => {
-              const duplicates = array.filter((other, otherIndex) => otherIndex !== index && edgesMatch(edge, other));
-              return duplicates.length === 0;
-            });
-
-            boundaryEdges.forEach((edge) => {
-              triangles.push({ a: edge[0], b: edge[1], c: point, index: point.index });
+            boundary.forEach(([from, to]) => {
+              triangles.push({ a: from, b: to, c: vertexIndex });
             });
           });
 
-          return triangles.filter((triangle) => (
-            triangle.a !== superTriangle[0]
-            && triangle.a !== superTriangle[1]
-            && triangle.a !== superTriangle[2]
-            && triangle.b !== superTriangle[0]
-            && triangle.b !== superTriangle[1]
-            && triangle.b !== superTriangle[2]
-            && triangle.c !== superTriangle[0]
-            && triangle.c !== superTriangle[1]
-            && triangle.c !== superTriangle[2]
-          ));
+          const result = [];
+          triangles.forEach((triangle) => {
+            if (triangle.a >= superOffset || triangle.b >= superOffset || triangle.c >= superOffset) {
+              return;
+            }
+            result.push([triangle.a, triangle.b, triangle.c]);
+          });
+
+          return result;
         }
 
         function locateOverlaySite(point, tolerance = 16) {
