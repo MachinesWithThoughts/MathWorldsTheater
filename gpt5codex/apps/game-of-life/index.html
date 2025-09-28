@@ -204,6 +204,14 @@
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
+        align-items: center;
+      }
+
+      .seeds-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
       }
 
       .pattern-status {
@@ -211,6 +219,8 @@
         font-size: 12px;
         line-height: 1.4;
         color: var(--text-muted);
+        flex: 1 0 180px;
+        min-width: 140px;
       }
 
       .pattern-status[data-tone="success"] {
@@ -597,6 +607,7 @@
         let historySummary;
         let historyTimeline;
         let patternStatusElement = null;
+        let seedsSectionController = null;
 
         const {
           root,
@@ -866,6 +877,10 @@
             patternStatusElement.textContent = message;
             patternStatusElement.dataset.tone = tone;
             patternStatusElement.hidden = !message;
+            if (state.patternPreview && message) {
+              ensureEscPlacementPrompt();
+            }
+            seedsSectionController?.refreshHeight?.();
           }
         }
 
@@ -879,6 +894,8 @@
           if (!keepStatus) {
             clearPatternStatus();
           }
+          ensureEscPlacementPrompt();
+          seedsSectionController?.refreshHeight?.();
           draw();
           return true;
         }
@@ -931,43 +948,47 @@
               setPatternStatus(message, preview.truncated.length ? "warning" : "success");
             }
           }
+          ensureEscPlacementPrompt();
+          seedsSectionController?.refreshHeight?.();
           draw();
         }
 
         function mergePatternPreview() {
           const preview = state.patternPreview;
           if (!preview) return;
- 
+
           let placed = 0;
           preview.cells.forEach(({ x, y }) => {
             if (applyCellState(x, y, true)) {
               placed += 1;
             }
           });
- 
+
           const truncatedCount = preview.truncated.length;
           const descriptor = describePattern(preview.pattern);
- 
+
           state.patternPreview = {
             pattern: preview.pattern,
             origin: preview.origin,
             cells: [],
             truncated: [],
           };
- 
+
           if (placed > 0) {
              const message = truncatedCount
                ? `${descriptor} placed (${placed} cells, ${truncatedCount} truncated).`
                : `${descriptor} placed (${placed} cells).`;
-             const suffix = " Move the cursor to place again or press Esc to cancel.";
-             setPatternStatus(`${message}${suffix}`, truncatedCount ? "warning" : "success");
-           } else {
-             setPatternStatus(`${descriptor} did not change any cells. Move the cursor to reposition or press Esc to cancel.`, "warning");
-           }
- 
-           updateHistoryPanel();
-           draw();
-         }
+            const suffix = " Move the cursor to place again or press Esc to cancel.";
+            setPatternStatus(`${message}${suffix}`, truncatedCount ? "warning" : "success");
+          } else {
+            setPatternStatus(`${descriptor} did not change any cells. Move the cursor to reposition or press Esc to cancel.`, "warning");
+          }
+
+          ensureEscPlacementPrompt();
+          seedsSectionController?.refreshHeight?.();
+          updateHistoryPanel();
+          draw();
+        }
 
         function updateGridDimensions() {
           const controllerState = renderController.getState();
@@ -1894,9 +1915,9 @@
         controlStack.appendChild(simulationControls);
 
         const seedsSectionWrapper = createControlsSection("Seeds", "Start from classic or random patterns.");
-        const seedsSection = seedsSectionWrapper.element;
+        seedsSectionController = seedsSectionWrapper;
         const seedButtons = document.createElement("div");
-        seedButtons.className = "button-row";
+        seedButtons.className = "seeds-controls";
         seedButtons.appendChild(createButton("Glider", seedGlider));
         seedButtons.appendChild(createButton("Random", seedRandom));
         const loadPatternButton = createButton("Load Pattern", () => {
@@ -1917,6 +1938,7 @@
               }
               const preview = buildPreview(pattern, { x: Math.floor(config.columns / 2), y: Math.floor(config.rows / 2) });
               applyPatternPreview(preview);
+              ensureEscPlacementPrompt();
             } catch (error) {
               console.error(error);
               setPatternStatus(error.message || "Failed to load pattern.", "error");
@@ -1927,12 +1949,20 @@
           input.click();
         });
         seedButtons.appendChild(loadPatternButton);
-        seedsSectionWrapper.appendChild(seedButtons);
-        patternStatusElement = document.createElement("p");
+        patternStatusElement = document.createElement("span");
         patternStatusElement.className = "pattern-status";
         patternStatusElement.hidden = true;
-        seedsSectionWrapper.appendChild(patternStatusElement);
-        controlStack.appendChild(seedsSection);
+        patternStatusElement.style.color = "white";
+        patternStatusElement.style.padding = "5px";
+        patternStatusElement.style.borderRadius = "5px";
+        patternStatusElement.style.fontSize = "12px";
+        patternStatusElement.style.fontWeight = "bold";
+        patternStatusElement.style.textAlign = "center";
+        patternStatusElement.style.width = "100%";
+        patternStatusElement.hidden = false;
+        seedButtons.appendChild(patternStatusElement);
+        seedsSectionWrapper.appendChild(seedButtons);
+        controlStack.appendChild(seedsSectionWrapper.element);
 
         const renderingSectionWrapper = createControlsSection(
           "Rendering",
@@ -2258,6 +2288,32 @@
             clearPatternPreview();
           }
         });
+
+        function ensureEscPlacementPrompt() {
+          if (!patternStatusElement) return;
+          if (!state.patternPreview) {
+            patternStatusElement.textContent = "";
+            patternStatusElement.hidden = true;
+            seedsSectionController?.refreshHeight?.();
+            return;
+          }
+          patternStatusElement.textContent = "Click to place pattern. ESC to cancel.";
+          patternStatusElement.hidden = false;
+          patternStatusElement.dataset.tone = "info";
+          seedsSectionController?.refreshHeight?.();
+        }
+
+        function clearPatternPreview({ keepStatus = false } = {}) {
+          if (!state.patternPreview) return false;
+          state.patternPreview = null;
+          if (!keepStatus) {
+            clearPatternStatus();
+          }
+          ensureEscPlacementPrompt();
+          seedsSectionController?.refreshHeight?.();
+          draw();
+          return true;
+        }
       })(window);
     </script>
   </body>

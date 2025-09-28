@@ -89,7 +89,7 @@ Generate a series of experimental standalone one-pager apps:
     - [I] Truncate the shape if it's too big for the current grid. (**COMPLETED**: 20250928-150200)
     - [I] As the user hovers, display the new shape in Green over the existing map. (**COMPLETED**: 20250928-150200)
     - [I] Drop it where the user clicks the mouse button. (**COMPLETED**: 20250928-150200)
-1. [R] After loading a pattern, display a message next to the `Load Pattern` button saying "Press ESC to place individual cells". Once Escape is pressed, clear the message.
+1. [I] After loading a pattern, display a message next to the `Load Pattern` button saying "Press ESC to place individual cells". Once Escape is pressed, clear the message. (**COMPLETED**: 20250928-152800)
 
 ## v00.00.09 - Add a 3d-renderer, with the height to represent the age.
 
