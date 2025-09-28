@@ -5,6 +5,8 @@
     return;
   }
 
+  const requirementsVersion = "v00.00.07";
+
   function setupApp({ title, description }) {
     const root = document.getElementById("app");
     if (!root) {
@@ -310,6 +312,7 @@
   }
 
   global.MathWorldsUI = {
+    requirementsVersion,
     setupApp,
     createControlsSection,
     createButton,

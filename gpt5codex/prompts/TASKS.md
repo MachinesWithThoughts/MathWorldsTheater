@@ -66,6 +66,8 @@ Generate a series of experimental standalone one-pager apps:
 1. [I] Add some additional themes, include Rainbow and Reverse-Rainbow. (**COMPLETED**: 20250927-163200)
 1. [I] Move the seeds to the second place. (**COMPLETED**: 20250927-163200)
 1. [I] Move the `Seeds` section as the second configuration section on the left (**COMPLETED**: 20250928-120000)
+1. [I] Add a version number based on the current requirements section to the top of the configuration section. (**COMPLETED**: 20250928-121500)
+1. [I] the delauney triangulation does not display anything. Draw the lines from the center of the cells. (**COMPLETED**: 20250928-124200)
 
 
 ## v00.00.08 - A better library of presets for game-of-life
@@ -112,3 +114,13 @@ Generate a series of experimental standalone one-pager apps:
 - Inspect the Game of Life configuration sidebar to confirm current section ordering and identify the `Seeds` block definition.
 - Adjust the ordering so the `Seeds` section renders second while preserving existing collapse state and styling hooks.
 - Validate the updated ordering across preset configurations, update documentation, and note verification steps in `tests/` prior to task completion.
+
+## v00.00.09 implementation
+- Locate the Game of Life configuration panel header construction within the shared layout utilities.
+- Surface the active requirements version (e.g., `v00.00.07`) and render it alongside the configuration title.
+- Ensure documentation and smoke tests describe the version indicator and keep task status updated after verification.
+
+## v00.00.10 implementation
+- Audit the Delaunay overlay logic to determine why triangles are not rendering for live cells.
+- Generate triangle edges using the centres of active cells and render them with appropriate styling.
+- Update README/tests to mention the visualisation change and mark the task complete once validated.
