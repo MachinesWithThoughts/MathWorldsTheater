@@ -90,6 +90,22 @@ Generate a series of experimental standalone one-pager apps:
     - [I] As the user hovers, display the new shape in Green over the existing map. (**COMPLETED**: 20250928-150200)
     - [I] Drop it where the user clicks the mouse button. (**COMPLETED**: 20250928-150200)
 1. [I] After loading a pattern, display a message next to the `Load Pattern` button saying "Press ESC to place individual cells". Once Escape is pressed, clear the message. (**COMPLETED**: 20250928-152800)
+1. [I] Above the `Load Pattern` button, place a note that says `Pattern files can be found at https://conwaylife.com/wiki.` (**COMPLETED**: 20250928-154500)
+1. [I] Add a button to `Seeds` to add a pattern via copy/paste. (**COMPLETED**: 20251002-154500)
+  - This should pop up into a window with a large text buffer and a rendering of the cells.
+  - Provide a `Cancel` button for when the user changes their mind.
+  - Provide an `Add` button that will behave as if the user the user loaded a file.
+1. [I] The pattern preview should be to the right of the copy/paste text field. (**COMPLETED**: 20251002-162200)
+
+## implementation
+- [I] Add a button to `Seeds` to add a pattern via copy/paste. (**COMPLETED**: 20251002-154500)
+  - Added a `Paste Pattern` control to the `Seeds` panel opening a modal with a large textarea, live preview canvas, and status messaging.
+  - Reused the existing RLE/plaintext parsing logic for pasted content, providing validation feedback and truncation indicators in real time.
+  - Wired the modal to feed the existing hover preview / placement workflow so pasted patterns behave exactly like loaded files.
+  - Documented the new workflow in `README.md` and verified via `tests/smoke/README.md` checklist.
+- [I] The pattern preview should be to the right of the copy/paste text field. (**COMPLETED**: 20251002-162200)
+  - Updated modal layout to use a responsive grid placing the preview column to the right on desktop and stacking vertically on narrow viewports.
+  - Verified CSS to ensure consistent alignment and updated smoke test instructions accordingly.
 
 ## v00.00.09 - Add a 3d-renderer, with the height to represent the age.
 

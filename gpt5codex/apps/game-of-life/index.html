@@ -235,6 +235,21 @@
         color: #f87171;
       }
 
+      .pattern-note {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .pattern-note a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .pattern-note a:hover {
+        text-decoration: underline;
+      }
+
       button.control-button {
         appearance: none;
         border: 1px solid var(--control-border);
@@ -257,6 +272,183 @@
       button.control-button:active {
         transform: translateY(0);
         background: rgba(14, 165, 233, 0.22);
+      }
+
+      button.control-button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        border-color: rgba(148, 163, 184, 0.15);
+        background: rgba(15, 23, 42, 0.4);
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.75);
+        backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 24px;
+      }
+
+      .modal-surface {
+        width: min(960px, 100%);
+        max-height: min(720px, 100%);
+        background: rgba(15, 23, 42, 0.96);
+        border-radius: 18px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        box-shadow: 0 24px 64px rgba(2, 6, 23, 0.55);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .modal-header {
+        padding: 20px 28px 16px;
+        display: flex;
+        align-items: baseline;
+        gap: 16px;
+      }
+
+      .modal-title {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+      }
+
+      .modal-subtitle {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 14px;
+      }
+
+      .modal-body {
+        padding: 0 28px 24px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        gap: 24px;
+        flex: 1;
+        overflow: hidden;
+        min-height: 0;
+        align-items: stretch;
+      }
+
+      .modal-body-column {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .modal-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
+      }
+
+      .modal-field span.label {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .modal-hint {
+        margin: 0;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .modal-footer {
+        padding: 20px 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        border-top: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(15, 23, 42, 0.75);
+      }
+
+      .modal-footer .button-row {
+        justify-content: flex-end;
+      }
+
+      .modal-footer-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .modal-footer button[data-variant="primary"] {
+        border-color: var(--accent-strong);
+        background: rgba(14, 165, 233, 0.28);
+      }
+
+      .modal-footer button[data-variant="primary"]:hover {
+        background: rgba(14, 165, 233, 0.38);
+      }
+
+      .modal-footer button[data-variant="outline"] {
+        background: transparent;
+      }
+
+      .preview-stage {
+        flex: 1;
+        min-height: 300px;
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: radial-gradient(circle at top left, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.75) 65%, rgba(15, 23, 42, 0.45) 100%);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .preview-status {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin: 0;
+      }
+
+      .preview-status[data-tone="success"] {
+        color: #34d399;
+      }
+
+      .preview-status[data-tone="error"] {
+        color: #f87171;
+      }
+
+      .preview-status[data-tone="warning"] {
+        color: #facc15;
+      }
+
+      .preview-status[data-tone="info"] {
+        color: var(--text-muted);
+      }
+
+      .preview-canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      textarea.paste-textarea {
+        min-height: 320px;
+        flex: 1;
+        resize: vertical;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 960px) {
+        .modal-body {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .preview-stage {
+          min-height: 220px;
+        }
       }
 
       label.slider {
@@ -543,6 +735,7 @@
           createButton,
           createSlider,
           createSelect,
+          createHotKeys,
           observeElementSize,
         } = global.MathWorldsUI;
         const { createRenderController } = global.MathWorldsRendering;
@@ -608,6 +801,7 @@
         let historyTimeline;
         let patternStatusElement = null;
         let seedsSectionController = null;
+        let pasteModalState = null;
 
         const {
           root,
@@ -852,6 +1046,350 @@
             };
             reader.onerror = () => reject(new Error("Failed to read file"));
             reader.readAsText(file);
+          });
+        }
+
+        function parsePatternText(text) {
+          const trimmed = (text ?? "").trim();
+          if (!trimmed) {
+            return Promise.resolve({ pattern: null, error: new Error("Paste some pattern text to continue.") });
+          }
+
+          return new Promise((resolve) => {
+            requestAnimationFrame(() => {
+              try {
+                const normalized = trimmed.replace(/\r\n?/g, "\n");
+                const headerLine = normalized
+                  .split("\n")
+                  .find((line) => line.trim().toLowerCase().startsWith("x"));
+                const looksLikeRLE = Boolean(headerLine) || /[0-9]+[ob$]/i.test(normalized);
+
+                if (looksLikeRLE) {
+                  resolve({ pattern: { ...parseRLEPattern(normalized), source: "rle" } });
+                } else {
+                  resolve({ pattern: { ...parsePlaintextPattern(normalized), source: "plaintext" } });
+                }
+              } catch (error) {
+                resolve({ pattern: null, error: error instanceof Error ? error : new Error("Failed to parse pattern.") });
+              }
+            });
+          });
+        }
+
+        function createModal({ title, subtitle, onClose }) {
+          const backdrop = document.createElement("div");
+          backdrop.className = "modal-backdrop";
+
+          function teardown() {
+            window.removeEventListener("keydown", handleKeyDown, true);
+            backdrop.removeEventListener("click", handleBackdropClick);
+            backdrop.remove();
+            onClose?.();
+          }
+
+          function handleKeyDown(event) {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              teardown();
+            }
+          }
+
+          function handleBackdropClick(event) {
+            if (event.target === backdrop) {
+              teardown();
+            }
+          }
+
+          window.addEventListener("keydown", handleKeyDown, true);
+          backdrop.addEventListener("click", handleBackdropClick);
+
+          const surface = document.createElement("div");
+          surface.className = "modal-surface";
+          surface.setAttribute("role", "dialog");
+          surface.setAttribute("tabindex", "-1");
+          surface.setAttribute("aria-modal", "true");
+
+          const header = document.createElement("header");
+          header.className = "modal-header";
+          const heading = document.createElement("h2");
+          heading.className = "modal-title";
+          heading.textContent = title;
+          header.appendChild(heading);
+          if (subtitle) {
+            const subtitleElement = document.createElement("p");
+            subtitleElement.className = "modal-subtitle";
+            subtitleElement.textContent = subtitle;
+            header.appendChild(subtitleElement);
+          }
+          surface.appendChild(header);
+
+          const body = document.createElement("div");
+          body.className = "modal-body";
+          surface.appendChild(body);
+
+          const footer = document.createElement("footer");
+          footer.className = "modal-footer";
+          surface.appendChild(footer);
+
+          backdrop.appendChild(surface);
+          document.body.appendChild(backdrop);
+
+          requestAnimationFrame(() => {
+            surface.focus({ preventScroll: true });
+          });
+
+          return {
+            backdrop,
+            surface,
+            body,
+            footer,
+            close: teardown,
+          };
+        }
+
+        function createPastePreviewCanvas(size = 320) {
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          canvas.className = "preview-canvas";
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            throw new Error("Failed to initialise preview canvas context");
+          }
+          return { canvas, ctx };
+        }
+
+        function renderPastePreview({ ctx, width, height, cells, truncated }) {
+          ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+          if (!cells || !cells.length) {
+            ctx.fillStyle = "rgba(148, 163, 184, 0.18)";
+            ctx.font = "14px 'JetBrains Mono', monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("No live cells", ctx.canvas.width / 2, ctx.canvas.height / 2);
+            return;
+          }
+
+          const padding = 20;
+          const scaleX = (ctx.canvas.width - padding * 2) / Math.max(width, 1);
+          const scaleY = (ctx.canvas.height - padding * 2) / Math.max(height, 1);
+          const scale = Math.min(scaleX, scaleY);
+          const cellSize = Math.max(2, Math.floor(scale));
+
+          const offsetX = (ctx.canvas.width - width * cellSize) / 2;
+          const offsetY = (ctx.canvas.height - height * cellSize) / 2;
+
+          ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+          ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+          ctx.fillStyle = "rgba(56, 189, 248, 0.75)";
+          cells.forEach(({ x, y }) => {
+            ctx.fillRect(offsetX + x * cellSize, offsetY + y * cellSize, cellSize - 1, cellSize - 1);
+          });
+
+          if (truncated && truncated.length) {
+            ctx.fillStyle = "rgba(248, 113, 113, 0.65)";
+            truncated.forEach(({ x, y }) => {
+              ctx.fillRect(offsetX + x * cellSize, offsetY + y * cellSize, cellSize - 1, cellSize - 1);
+            });
+          }
+
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.45)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(offsetX - 0.5, offsetY - 0.5, width * cellSize + 1, height * cellSize + 1);
+        }
+
+        function buildPastePreview(pattern) {
+          if (!pattern || !pattern.cells.length) {
+            return {
+              width: pattern?.width ?? 0,
+              height: pattern?.height ?? 0,
+              cells: [],
+              truncated: [],
+              preview: null,
+            };
+          }
+
+          const preview = buildPreview(pattern, {
+            x: Math.floor(config.columns / 2),
+            y: Math.floor(config.rows / 2),
+          });
+
+          return {
+            width: pattern.width,
+            height: pattern.height,
+            cells: preview.cells.map(({ x, y }) => ({ x: x - preview.origin.x, y: y - preview.origin.y })),
+            truncated: preview.truncated,
+            preview,
+          };
+        }
+
+        function openPastePatternModal() {
+          const modal = createModal({
+            title: "Paste Pattern",
+            subtitle: "Paste RLE or plaintext pattern data, preview, and add it to the grid.",
+            onClose() {
+              pasteModalState = null;
+            },
+          });
+
+          const modalState = {
+            close: modal.close,
+            status: null,
+            pattern: null,
+            preview: null,
+            truncatedCount: 0,
+          };
+          pasteModalState = modalState;
+
+          const inputColumn = document.createElement("div");
+          inputColumn.className = "modal-body-column";
+
+          const textareaField = document.createElement("div");
+          textareaField.className = "modal-field";
+          const textareaLabel = document.createElement("span");
+          textareaLabel.className = "label";
+          textareaLabel.textContent = "Pattern Text";
+          const textareaHint = document.createElement("p");
+          textareaHint.className = "modal-hint";
+          textareaHint.textContent = "Supports RLE (.rle) or Plaintext (.cells) formats.";
+
+          const textarea = document.createElement("textarea");
+          textarea.className = "control-textarea paste-textarea";
+          textarea.setAttribute("placeholder", "Paste pattern data here...");
+
+          const statusElement = document.createElement("p");
+          statusElement.className = "preview-status";
+          statusElement.textContent = "";
+
+          function updateModalStatus(message, tone = "info") {
+            modalState.status = { message, tone };
+            statusElement.textContent = message;
+            statusElement.dataset.tone = tone;
+          }
+
+          const previewColumn = document.createElement("div");
+          previewColumn.className = "modal-body-column";
+          const previewStage = document.createElement("div");
+          previewStage.className = "preview-stage";
+          const previewStatus = document.createElement("p");
+          previewStatus.className = "preview-status";
+          previewStatus.textContent = "Paste pattern text to see a preview.";
+          previewStatus.dataset.tone = "info";
+          const { canvas: previewCanvas, ctx: previewCtx } = createPastePreviewCanvas();
+          previewStage.appendChild(previewCanvas);
+
+          let listenerVersion = 0;
+
+          function syncPreview(result) {
+            if (!result || !result.pattern) {
+              modalState.pattern = null;
+              modalState.preview = null;
+              modalState.truncatedCount = 0;
+              renderPastePreview({ ctx: previewCtx, width: 0, height: 0, cells: [], truncated: [] });
+              const message = result?.error?.message || "Paste pattern text to see a preview.";
+              previewStatus.textContent = message;
+              previewStatus.dataset.tone = result?.error ? "error" : "info";
+              updateModalStatus(result?.error?.message || "", result?.error ? "error" : "info");
+              return;
+            }
+
+            modalState.pattern = result.pattern;
+            const previewData = buildPastePreview(result.pattern);
+            modalState.preview = previewData.preview;
+            modalState.truncatedCount = previewData.truncated.length;
+
+            renderPastePreview({
+              ctx: previewCtx,
+              width: previewData.width,
+              height: previewData.height,
+              cells: previewData.cells,
+              truncated: previewData.truncated,
+            });
+
+            if (!previewData.cells.length) {
+              const message = "Pattern contains no live cells.";
+              previewStatus.textContent = message;
+              previewStatus.dataset.tone = "error";
+              updateModalStatus(message, "error");
+              return;
+            }
+
+            const descriptor = describePattern(result.pattern);
+            const summary = modalState.truncatedCount
+              ? `${descriptor} parsed (${previewData.cells.length} cells, ${modalState.truncatedCount} truncated).`
+              : `${descriptor} parsed (${previewData.cells.length} cells).`;
+            previewStatus.textContent = summary;
+            previewStatus.dataset.tone = modalState.truncatedCount ? "warning" : "success";
+            updateModalStatus("Pattern ready to add.", modalState.truncatedCount ? "warning" : "success");
+          }
+
+          const footerMeta = document.createElement("div");
+          footerMeta.className = "modal-footer-meta";
+          footerMeta.appendChild(createHotKeys(["ESC", "Cancel paste"]));
+
+          const footerButtons = document.createElement("div");
+          footerButtons.className = "button-row";
+          const cancelButton = createButton(
+            "Cancel",
+            () => {
+              modal.close();
+            },
+            { variant: "outline" },
+          );
+          const addButton = createButton(
+            "Add Pattern",
+            () => {
+              if (!modalState.preview) {
+                updateModalStatus("Paste a valid pattern first.", "error");
+                return;
+              }
+              applyPatternPreview(modalState.preview);
+              ensureEscPlacementPrompt();
+              modal.close();
+              seedsSectionController?.refreshHeight?.();
+            },
+            { variant: "primary" },
+          );
+          addButton.disabled = true;
+
+          textarea.addEventListener("input", () => {
+            const current = Date.now();
+            listenerVersion = current;
+            textarea.dataset.version = String(current);
+            parsePatternText(textarea.value).then((result) => {
+              if (textarea.dataset.version !== String(current)) {
+                return;
+              }
+              syncPreview(result);
+              addButton.disabled = !modalState.preview || !modalState.preview.cells?.length;
+            });
+          });
+
+          textareaField.appendChild(textareaLabel);
+          textareaField.appendChild(textarea);
+          textareaField.appendChild(textareaHint);
+          inputColumn.appendChild(textareaField);
+          inputColumn.appendChild(statusElement);
+
+          previewColumn.appendChild(previewStage);
+          previewColumn.appendChild(previewStatus);
+
+          modal.body.appendChild(inputColumn);
+          modal.body.appendChild(previewColumn);
+
+          footerButtons.appendChild(cancelButton);
+          footerButtons.appendChild(addButton);
+          modal.footer.appendChild(footerMeta);
+          modal.footer.appendChild(footerButtons);
+
+          parsePatternText(textarea.value).then((result) => {
+            syncPreview(result);
+            addButton.disabled = !modalState.preview || !modalState.preview.cells?.length;
+          });
+
+          modal.backdrop.addEventListener("remove", () => {
+            modalState.disconnect?.();
           });
         }
 
@@ -1916,10 +2454,20 @@
 
         const seedsSectionWrapper = createControlsSection("Seeds", "Start from classic or random patterns.");
         seedsSectionController = seedsSectionWrapper;
+        const patternHint = document.createElement("p");
+        patternHint.className = "pattern-note";
+        patternHint.innerHTML = 'Pattern files can be found at <a href="https://conwaylife.com/wiki" target="_blank" rel="noopener noreferrer">conwaylife.com/wiki</a>.';
+        seedsSectionWrapper.appendChild(patternHint);
+        seedsSectionWrapper.refreshHeight();
         const seedButtons = document.createElement("div");
         seedButtons.className = "seeds-controls";
-        seedButtons.appendChild(createButton("Glider", seedGlider));
-        seedButtons.appendChild(createButton("Random", seedRandom));
+
+        const seedButtonRow = document.createElement("div");
+        seedButtonRow.className = "button-row";
+        seedButtonRow.style.flexWrap = "wrap";
+        seedButtonRow.appendChild(createButton("Glider", seedGlider));
+        seedButtonRow.appendChild(createButton("Random", seedRandom));
+
         const loadPatternButton = createButton("Load Pattern", () => {
           const input = document.createElement("input");
           input.type = "file";
@@ -1948,7 +2496,13 @@
           });
           input.click();
         });
-        seedButtons.appendChild(loadPatternButton);
+        seedButtonRow.appendChild(loadPatternButton);
+
+        const pastePatternButton = createButton("Paste Pattern", openPastePatternModal);
+        seedButtonRow.appendChild(pastePatternButton);
+
+        seedButtons.appendChild(seedButtonRow);
+
         patternStatusElement = document.createElement("span");
         patternStatusElement.className = "pattern-status";
         patternStatusElement.hidden = true;
