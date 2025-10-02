@@ -24,6 +24,7 @@ Interactive one-pager apps for exploring mathematical systems.
 - Switch overlay colour themes (Age, Rainbow, Reverse-Rainbow) to explore alternate palettes for live-cell Voronoi and Delaunay views
 - Switch the Simulation "Click Mode" between `Toggle Cell` and `Explore Cells` to edit or inspect history with a single click
 - Load `.rle` or `.cells` pattern files from the Seeds panel; hover to preview the placement in green, see truncation warnings, and click to stamp multiple times or press Esc to cancel the preview
+- Paste pattern definitions directly into the Seeds panel: review parsed metadata, inspect a live mini-preview (with truncation indicators), then add the pattern to the board while retaining the interactive placement workflow
 
 ### Lindenmayer System Explorer
 - Edit the axiom and production rules via text areas with instant redraws
