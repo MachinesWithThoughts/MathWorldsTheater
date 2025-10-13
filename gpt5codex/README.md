@@ -28,7 +28,7 @@ Interactive one-pager apps for exploring mathematical systems.
 
 ### Lindenmayer System Explorer
 - Edit the axiom and production rules via text areas with instant redraws
-- Control angle, iterations, segment length, and load presets (Koch, Dragon, Plant)
+- Control angle, iterations, segment length, and choose from curated presets (Koch Snowflake, Dragon Curve, Sierpinski Triangle, Gosper Island, Levy C Curve, Fractal Plant)
 - Render paths on a plane or sphere, with wrap options for Euclidean mode
 
 ### Mandelbrot Set Explorer

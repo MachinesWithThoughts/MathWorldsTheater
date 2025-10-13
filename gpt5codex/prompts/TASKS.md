@@ -106,6 +106,18 @@ Generate a series of experimental standalone one-pager apps:
 - [I] The pattern preview should be to the right of the copy/paste text field. (**COMPLETED**: 20251002-162200)
   - Updated modal layout to use a responsive grid placing the preview column to the right on desktop and stacking vertically on narrow viewports.
   - Verified CSS to ensure consistent alignment and updated smoke test instructions accordingly.
+- [I] Update the UI to choose an L-system from common rules such as the Koch Snowflake, Dragon, etc. (**COMPLETED**: 20251012-120500)
+  - Review the current L-system explorer UI/state flow to confirm how rules, angles, iterations, and rendering defaults are stored.
+  - Curate a preset catalog (Koch Snowflake, Dragon Curve, Sierpinski Triangle, Plant, etc.) mapping to axiom, rules, angle, iteration defaults, and optional rendering tweaks.
+  - Add a selector control that loads a preset into the existing editable fields while preserving manual overrides and highlighting unsaved edits.
+  - Persist the currently active preset in state, including a "Custom" fallback when users deviate from preset values.
+  - Update `README.md` with the preset workflow, add coverage in `tests/` (isolated folder), and prepare to mark the task as implemented once verified.
+  - Added six curated presets with preloaded axiom, rules, angle, segment length, iteration, and initial heading defaults plus a custom state detector.
+  - Augmented controls with an initial heading slider and preset badge reflecting whether settings match a curated preset or a custom configuration.
+  - Documented the new preset flow in `README.md` and extended `tests/smoke/README.md` with manual verification steps before updating task status.
+- [I] Add the ability to switch between 2-d and 3-d L-systems.
+- [I] Update the UI to choose an L-system from common rules such as the Koch Snowflake, Dragon, etc. (**COMPLETED**: 20251013-101500)
+  - Built a reusable preset catalog spanning 2D classics (Koch, Dragon, Sierpinski, Gosper, Levy, Plant) and hydrated preset selection with custom detection and status badges.
 
 ## v00.00.09 - Add a 3d-renderer, with the height to represent the age.
 
@@ -167,3 +179,25 @@ Generate a series of experimental standalone one-pager apps:
 - Implement truncation by filtering preview offsets that would fall outside the current grid and communicating truncation to the user (status message beneath Seeds panel).
 - On click confirmation, merge the pattern into `state.grid` at the snapped location, append history records for newly alive cells, and clear preview state.
 - Update documentation (`README.md`, smoke tests) to cover pattern loading workflow, supported formats, and truncation behaviour once validated. (**COMPLETED**: 20250928-151000)
+
+# v00.03.00 L-systems
+
+Update the l-systmes app:
+
+1. [R] Update the UI to choose an L-system from common rules such as the Koch Snowflake, Dragon, etc.
+  - Build a reusable preset catalog covering the target grammars (name, axiom, production rules, angle, segment defaults, optional metadata).
+  - Refactor the Lindenmeyer explorer state handling so the selector can hydrate the current inputs while tracking manual overrides and preset status.
+  - Surface preset badges/descriptions and ensure documentation plus smoke tests capture the workflow.
+
+
+# v00.04.00 Refactoring.
+1. [R] gpt5codex will be used for the rest of the development of this system. Update the main UI to only show the gpt5codex versions.
+  - Remove `auto/` and `codexcli/` versions
+1. [R] For the game-of-life, lindemeyer, mandelbrot and voronoi apps - break out the Javascript into a separate file.
+1. [R] Consolidate the UIs to use the same design patterns and UX - use the gameoflife UI as the baseline . Move those into a common library.
+  - Inventory the shared layout/interaction patterns across explorers and outline common components (panels, tabs, sliders, status toasts).
+  - Extract shared styling/utilities into a central module while leaving room for app-specific overrides.
+  - Refactor each explorer to consume the new toolkit and document migration steps for future apps.
+
+## FUTURE
+- Support the different types of L-Systems.
